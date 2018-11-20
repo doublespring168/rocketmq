@@ -28,14 +28,14 @@ public class ServiceProviderTest {
     @Test
     public void loadTransactionMsgServiceTest() {
         TransactionalMessageService transactionService = ServiceProvider.loadClass(ServiceProvider.TRANSACTION_SERVICE_ID,
-            TransactionalMessageService.class);
+                TransactionalMessageService.class);
         assertThat(transactionService).isNotNull();
     }
 
     @Test
     public void loadAbstractTransactionListenerTest() {
         AbstractTransactionalMessageCheckListener listener = ServiceProvider.loadClass(ServiceProvider.TRANSACTION_LISTENER_ID,
-            AbstractTransactionalMessageCheckListener.class);
+                AbstractTransactionalMessageCheckListener.class);
         assertThat(listener).isNotNull();
     }
 }

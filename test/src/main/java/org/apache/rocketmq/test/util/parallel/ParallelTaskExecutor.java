@@ -46,12 +46,6 @@ public class ParallelTaskExecutor {
         }
     }
 
-    public void startNoBlock() {
-        for (ParallelTask task : tasks) {
-            cachedThreadPool.execute(task);
-        }
-    }
-
     private void init() {
         latch = new CountDownLatch(tasks.size());
         for (ParallelTask task : tasks) {
@@ -62,6 +56,12 @@ public class ParallelTaskExecutor {
     private void startTask() {
         for (ParallelTask task : tasks) {
             task.start();
+        }
+    }
+
+    public void startNoBlock() {
+        for (ParallelTask task : tasks) {
+            cachedThreadPool.execute(task);
         }
     }
 }

@@ -43,24 +43,6 @@ public class FileUtil {
         fileUtil.writeProperties(properties);
     }
 
-    public void deleteFile() {
-        File file = new File(filePath + File.separator + fileName);
-        if (file.exists()) {
-            file.delete();
-        }
-    }
-
-    public void appendFile(String content) {
-        File file = openFile();
-        String newContent = lineSeperator + content;
-        writeFile(file, newContent, true);
-    }
-
-    public void coverFile(String content) {
-        File file = openFile();
-        writeFile(file, content, false);
-    }
-
     public void writeProperties(Properties properties) {
         String content = getPropertiesAsString(properties);
         this.coverFile(content);
@@ -70,9 +52,26 @@ public class FileUtil {
         StringBuilder sb = new StringBuilder();
         for (Object key : properties.keySet()) {
             sb.append(key).append("=").append(properties.getProperty((String) key))
-                .append(lineSeperator);
+                    .append(lineSeperator);
         }
         return sb.toString();
+    }
+
+    public void coverFile(String content) {
+        File file = openFile();
+        writeFile(file, content, false);
+    }
+
+    private File openFile() {
+        File file = new File(filePath + File.separator + fileName);
+        if (!file.exists()) {
+            try {
+                file.createNewFile();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return file;
     }
 
     private void writeFile(File file, String content, boolean append) {
@@ -94,15 +93,16 @@ public class FileUtil {
         }
     }
 
-    private File openFile() {
+    public void deleteFile() {
         File file = new File(filePath + File.separator + fileName);
-        if (!file.exists()) {
-            try {
-                file.createNewFile();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+        if (file.exists()) {
+            file.delete();
         }
-        return file;
+    }
+
+    public void appendFile(String content) {
+        File file = openFile();
+        String newContent = lineSeperator + content;
+        writeFile(file, newContent, true);
     }
 }

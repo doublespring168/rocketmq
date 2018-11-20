@@ -16,36 +16,22 @@
  */
 package org.apache.rocketmq.client.consumer.rebalance;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import java.util.TreeMap;
 import org.apache.rocketmq.client.consumer.AllocateMessageQueueStrategy;
 import org.apache.rocketmq.common.message.MessageQueue;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.*;
+
 public class AllocateMessageQueueConsitentHashTest {
 
-    private String topic;
     private static final String CID_PREFIX = "CID-";
+    private String topic;
 
     @Before
     public void init() {
         topic = "topic_test";
-    }
-
-    public void printMessageQueue(List<MessageQueue> messageQueueList, String name) {
-        if (messageQueueList == null || messageQueueList.size() < 1)
-            return;
-        System.out.println(name + ".......................................start");
-        for (MessageQueue messageQueue : messageQueueList) {
-            System.out.println(messageQueue);
-        }
-        System.out.println(name + ".......................................end");
     }
 
     @Test
@@ -56,6 +42,33 @@ public class AllocateMessageQueueConsitentHashTest {
         List<MessageQueue> result = new AllocateMessageQueueConsistentHash().allocate("", currentCID, messageQueueList, consumerIdList);
         printMessageQueue(result, "testCurrentCIDNotExists");
         Assert.assertEquals(result.size(), 0);
+    }
+
+    private List<String> createConsumerIdList(int size) {
+        List<String> consumerIdList = new ArrayList<String>(size);
+        for (int i = 0; i < size; i++) {
+            consumerIdList.add(CID_PREFIX + String.valueOf(i));
+        }
+        return consumerIdList;
+    }
+
+    private List<MessageQueue> createMessageQueueList(int size) {
+        List<MessageQueue> messageQueueList = new ArrayList<MessageQueue>(size);
+        for (int i = 0; i < size; i++) {
+            MessageQueue mq = new MessageQueue(topic, "brokerName", i);
+            messageQueueList.add(mq);
+        }
+        return messageQueueList;
+    }
+
+    public void printMessageQueue(List<MessageQueue> messageQueueList, String name) {
+        if (messageQueueList == null || messageQueueList.size() < 1)
+            return;
+        System.out.println(name + ".......................................start");
+        for (MessageQueue messageQueue : messageQueueList) {
+            System.out.println(messageQueue);
+        }
+        System.out.println(name + ".......................................end");
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -84,24 +97,6 @@ public class AllocateMessageQueueConsitentHashTest {
         testAllocate(20, 10);
     }
 
-    @Test
-    public void testAllocate2() {
-        testAllocate(10, 20);
-    }
-
-    @Test
-    public void testRun100RandomCase() {
-        for (int i = 0; i < 10; i++) {
-            int consumerSize = new Random().nextInt(20) + 1;//1-20
-            int queueSize = new Random().nextInt(20) + 1;//1-20
-            testAllocate(queueSize, consumerSize);
-            try {
-                Thread.sleep(1);
-            } catch (InterruptedException e) {
-            }
-        }
-    }
-
     public void testAllocate(int queueSize, int consumerSize) {
         AllocateMessageQueueStrategy allocateMessageQueueConsistentHash = new AllocateMessageQueueConsistentHash(3);
 
@@ -128,7 +123,7 @@ public class AllocateMessageQueueConsitentHashTest {
             }
 
             Assert.assertTrue(
-                verifyAllocateAll(cidBegin, mqAll, allocatedResAll));
+                    verifyAllocateAll(cidBegin, mqAll, allocatedResAll));
         }
 
         Map<MessageQueue, String> allocateToAllAfterRemoveOne = new TreeMap<MessageQueue, String>();
@@ -158,7 +153,7 @@ public class AllocateMessageQueueConsitentHashTest {
             }
 
             Assert.assertTrue("queueSize" + queueSize + "consumerSize:" + consumerSize + "\nmqAll:" + mqAll + "\nallocatedResAllAfterRemove" + allocatedResAllAfterRemove,
-                verifyAllocateAll(cidAfterRemoveOne, mqAll, allocatedResAllAfterRemove));
+                    verifyAllocateAll(cidAfterRemoveOne, mqAll, allocatedResAllAfterRemove));
             verifyAfterRemove(allocateToAllOrigin, allocateToAllAfterRemoveOne, removeCID);
         }
 
@@ -185,13 +180,13 @@ public class AllocateMessageQueueConsitentHashTest {
             }
 
             Assert.assertTrue(
-                verifyAllocateAll(cidAfterAdd, mqAll, allocatedResAllAfterAdd));
+                    verifyAllocateAll(cidAfterAdd, mqAll, allocatedResAllAfterAdd));
             verifyAfterAdd(allocateToAllAfterRemoveOne, allocateToAll3, newCid);
         }
     }
 
     private boolean verifyAllocateAll(List<String> cidAll, List<MessageQueue> mqAll,
-        List<MessageQueue> allocatedResAll) {
+                                      List<MessageQueue> allocatedResAll) {
         if (cidAll.isEmpty()) {
             return allocatedResAll.isEmpty();
         }
@@ -199,7 +194,7 @@ public class AllocateMessageQueueConsitentHashTest {
     }
 
     private void verifyAfterRemove(Map<MessageQueue, String> allocateToBefore, Map<MessageQueue, String> allocateAfter,
-        String removeCID) {
+                                   String removeCID) {
         for (MessageQueue mq : allocateToBefore.keySet()) {
             String allocateToOrigin = allocateToBefore.get(mq);
             if (allocateToOrigin.equals(removeCID)) {
@@ -211,7 +206,7 @@ public class AllocateMessageQueueConsitentHashTest {
     }
 
     private void verifyAfterAdd(Map<MessageQueue, String> allocateBefore, Map<MessageQueue, String> allocateAfter,
-        String newCID) {
+                                String newCID) {
         for (MessageQueue mq : allocateAfter.keySet()) {
             String allocateToOrigin = allocateBefore.get(mq);
             String allocateToAfter = allocateAfter.get(mq);
@@ -223,20 +218,21 @@ public class AllocateMessageQueueConsitentHashTest {
         }
     }
 
-    private List<String> createConsumerIdList(int size) {
-        List<String> consumerIdList = new ArrayList<String>(size);
-        for (int i = 0; i < size; i++) {
-            consumerIdList.add(CID_PREFIX + String.valueOf(i));
-        }
-        return consumerIdList;
+    @Test
+    public void testAllocate2() {
+        testAllocate(10, 20);
     }
 
-    private List<MessageQueue> createMessageQueueList(int size) {
-        List<MessageQueue> messageQueueList = new ArrayList<MessageQueue>(size);
-        for (int i = 0; i < size; i++) {
-            MessageQueue mq = new MessageQueue(topic, "brokerName", i);
-            messageQueueList.add(mq);
+    @Test
+    public void testRun100RandomCase() {
+        for (int i = 0; i < 10; i++) {
+            int consumerSize = new Random().nextInt(20) + 1;//1-20
+            int queueSize = new Random().nextInt(20) + 1;//1-20
+            testAllocate(queueSize, consumerSize);
+            try {
+                Thread.sleep(1);
+            } catch (InterruptedException e) {
+            }
         }
-        return messageQueueList;
     }
 }

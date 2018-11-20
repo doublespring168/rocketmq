@@ -84,11 +84,11 @@ public abstract class LogicExpression extends BinaryExpression implements Boolea
         };
     }
 
-    public abstract Object evaluate(EvaluationContext context) throws Exception;
-
     public boolean matches(EvaluationContext context) throws Exception {
         Object object = evaluate(context);
         return object != null && object == Boolean.TRUE;
     }
+
+    public abstract Object evaluate(EvaluationContext context) throws Exception;
 
 }

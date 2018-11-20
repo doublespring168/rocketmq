@@ -24,14 +24,16 @@ public class MessageExtBrokerInner extends MessageExt {
     private String propertiesString;
     private long tagsCode;
 
-    public static long tagsString2tagsCode(final TopicFilterType filter, final String tags) {
-        if (null == tags || tags.length() == 0) { return 0; }
-
-        return tags.hashCode();
-    }
-
     public static long tagsString2tagsCode(final String tags) {
         return tagsString2tagsCode(null, tags);
+    }
+
+    public static long tagsString2tagsCode(final TopicFilterType filter, final String tags) {
+        if (null == tags || tags.length() == 0) {
+            return 0;
+        }
+
+        return tags.hashCode();
     }
 
     public String getPropertiesString() {

@@ -34,15 +34,6 @@ public class BytesMessageImpl implements BytesMessage {
     }
 
     @Override
-    public <T> T getBody(Class<T> type) throws OMSMessageFormatException {
-        if (type == byte[].class) {
-            return (T)body;
-        }
-
-        throw new OMSMessageFormatException("", "Cannot assign byte[] to " + type.getName());
-    }
-
-    @Override
     public BytesMessage setBody(final byte[] body) {
         this.body = body;
         return this;
@@ -104,6 +95,15 @@ public class BytesMessageImpl implements BytesMessage {
     public Message putUserHeaders(String key, String value) {
         userHeaders.put(key, value);
         return this;
+    }
+
+    @Override
+    public <T> T getBody(Class<T> type) throws OMSMessageFormatException {
+        if (type == byte[].class) {
+            return (T) body;
+        }
+
+        throw new OMSMessageFormatException("", "Cannot assign byte[] to " + type.getName());
     }
 
     @Override

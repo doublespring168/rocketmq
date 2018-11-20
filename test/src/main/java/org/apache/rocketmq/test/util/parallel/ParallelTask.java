@@ -30,8 +30,6 @@ public abstract class ParallelTask extends Thread {
         this.latch = latch;
     }
 
-    public abstract void execute();
-
     @Override
     public void run() {
         this.execute();
@@ -40,4 +38,6 @@ public abstract class ParallelTask extends Thread {
             latch.countDown();
         }
     }
+
+    public abstract void execute();
 }

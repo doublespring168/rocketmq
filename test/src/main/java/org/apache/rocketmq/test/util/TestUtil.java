@@ -18,12 +18,7 @@
 package org.apache.rocketmq.test.util;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 public final class TestUtil {
@@ -87,7 +82,7 @@ public final class TestUtil {
 
     public static void waitForInput(String keyWord) {
         waitForInput(keyWord,
-            String.format("The thread will wait until you input stop command[%s]:", keyWord));
+                String.format("The thread will wait until you input stop command[%s]:", keyWord));
     }
 
     public static void waitForInput(String keyWord, String info) {

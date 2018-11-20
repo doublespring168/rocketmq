@@ -41,14 +41,6 @@ public class PropertyExpression implements Expression {
     }
 
     /**
-     * @see Object#toString()
-     */
-    @Override
-    public String toString() {
-        return name;
-    }
-
-    /**
      * @see Object#hashCode()
      */
     @Override
@@ -66,5 +58,13 @@ public class PropertyExpression implements Expression {
             return false;
         }
         return name.equals(((PropertyExpression) o).name);
+    }
+
+    /**
+     * @see Object#toString()
+     */
+    @Override
+    public String toString() {
+        return name;
     }
 }

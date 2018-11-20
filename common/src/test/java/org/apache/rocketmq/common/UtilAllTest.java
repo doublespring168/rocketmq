@@ -17,8 +17,9 @@
 
 package org.apache.rocketmq.common;
 
-import java.util.Properties;
 import org.junit.Test;
+
+import java.util.Properties;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
@@ -139,11 +140,11 @@ public class UtilAllTest {
         @Override
         public String toString() {
             return "DemoConfig{" +
-                "demoWidth=" + demoWidth +
-                ", demoLength=" + demoLength +
-                ", demoOK=" + demoOK +
-                ", demoName='" + demoName + '\'' +
-                '}';
+                    "demoWidth=" + demoWidth +
+                    ", demoLength=" + demoLength +
+                    ", demoOK=" + demoOK +
+                    ", demoName='" + demoName + '\'' +
+                    '}';
         }
     }
 }

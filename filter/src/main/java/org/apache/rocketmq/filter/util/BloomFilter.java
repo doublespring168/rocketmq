@@ -38,16 +38,6 @@ public class BloomFilter {
     private int m;
 
     /**
-     * Create bloom filter by error rate and mapping num.
-     *
-     * @param f error rate
-     * @param n num will mapping to bit
-     */
-    public static BloomFilter createByFn(int f, int n) {
-        return new BloomFilter(f, n);
-    }
-
-    /**
      * Constructor.
      *
      * @param f error rate
@@ -80,6 +70,29 @@ public class BloomFilter {
         this.m = (int) (Byte.SIZE * Math.ceil(this.m / (Byte.SIZE * 1.0)));
     }
 
+    protected double logMN(double m, double n) {
+        return Math.log(n) / Math.log(m);
+    }
+
+    /**
+     * Create bloom filter by error rate and mapping num.
+     *
+     * @param f error rate
+     * @param n num will mapping to bit
+     */
+    public static BloomFilter createByFn(int f, int n) {
+        return new BloomFilter(f, n);
+    }
+
+    /**
+     * Calculate bit positions of {@code str} to construct {@code BloomFilterData}
+     */
+    public BloomFilterData generate(String str) {
+        int[] bitPositions = calcBitPositions(str);
+
+        return new BloomFilterData(bitPositions, this.m);
+    }
+
     /**
      * Calculate bit positions of {@code str}.
      * <p>
@@ -108,15 +121,6 @@ public class BloomFilter {
     }
 
     /**
-     * Calculate bit positions of {@code str} to construct {@code BloomFilterData}
-     */
-    public BloomFilterData generate(String str) {
-        int[] bitPositions = calcBitPositions(str);
-
-        return new BloomFilterData(bitPositions, this.m);
-    }
-
-    /**
      * Calculate bit positions of {@code str}, then set the related {@code bits} positions to 1.
      */
     public void hashTo(String str, BitsArray bits) {
@@ -134,6 +138,14 @@ public class BloomFilter {
         }
     }
 
+    protected void check(BitsArray bits) {
+        if (bits.bitLength() != this.m) {
+            throw new IllegalArgumentException(
+                    String.format("Length(%d) of bits in BitsArray is not equal to %d!", bits.bitLength(), this.m)
+            );
+        }
+    }
+
     /**
      * Extra check:
      * <li>1. check {@code filterData} belong to this bloom filter.</li>
@@ -144,11 +156,29 @@ public class BloomFilter {
     public void hashTo(BloomFilterData filterData, BitsArray bits) {
         if (!isValid(filterData)) {
             throw new IllegalArgumentException(
-                String.format("Bloom filter data may not belong to this filter! %s, %s",
-                    filterData, this.toString())
+                    String.format("Bloom filter data may not belong to this filter! %s, %s",
+                            filterData, this.toString())
             );
         }
         hashTo(filterData.getBitPos(), bits);
+    }
+
+    /**
+     * Check {@code BloomFilterData} is valid, and belong to this bloom filter.
+     * <li>1. not null</li>
+     * <li>2. {@link org.apache.rocketmq.filter.util.BloomFilterData#getBitNum} must be equal to {@code m} </li>
+     * <li>3. {@link org.apache.rocketmq.filter.util.BloomFilterData#getBitPos} is not null</li>
+     * <li>4. {@link org.apache.rocketmq.filter.util.BloomFilterData#getBitPos}'s length is equal to {@code k}</li>
+     */
+    public boolean isValid(BloomFilterData filterData) {
+        if (filterData == null
+                || filterData.getBitNum() != this.m
+                || filterData.getBitPos() == null
+                || filterData.getBitPos().length != this.k) {
+            return false;
+        }
+
+        return true;
     }
 
     /**
@@ -182,8 +212,8 @@ public class BloomFilter {
     public boolean isHit(BloomFilterData filterData, BitsArray bits) {
         if (!isValid(filterData)) {
             throw new IllegalArgumentException(
-                String.format("Bloom filter data may not belong to this filter! %s, %s",
-                    filterData, this.toString())
+                    String.format("Bloom filter data may not belong to this filter! %s, %s",
+                            filterData, this.toString())
             );
         }
         return isHit(filterData.getBitPos(), bits);
@@ -203,32 +233,6 @@ public class BloomFilter {
             if (!bits.getBit(pos)) {
                 return false;
             }
-        }
-
-        return true;
-    }
-
-    protected void check(BitsArray bits) {
-        if (bits.bitLength() != this.m) {
-            throw new IllegalArgumentException(
-                String.format("Length(%d) of bits in BitsArray is not equal to %d!", bits.bitLength(), this.m)
-            );
-        }
-    }
-
-    /**
-     * Check {@code BloomFilterData} is valid, and belong to this bloom filter.
-     * <li>1. not null</li>
-     * <li>2. {@link org.apache.rocketmq.filter.util.BloomFilterData#getBitNum} must be equal to {@code m} </li>
-     * <li>3. {@link org.apache.rocketmq.filter.util.BloomFilterData#getBitPos} is not null</li>
-     * <li>4. {@link org.apache.rocketmq.filter.util.BloomFilterData#getBitPos}'s length is equal to {@code k}</li>
-     */
-    public boolean isValid(BloomFilterData filterData) {
-        if (filterData == null
-            || filterData.getBitNum() != this.m
-            || filterData.getBitPos() == null
-            || filterData.getBitPos().length != this.k) {
-            return false;
         }
 
         return true;
@@ -263,6 +267,15 @@ public class BloomFilter {
     }
 
     @Override
+    public int hashCode() {
+        int result = f;
+        result = 31 * result + n;
+        result = 31 * result + k;
+        result = 31 * result + m;
+        return result;
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o)
             return true;
@@ -284,20 +297,7 @@ public class BloomFilter {
     }
 
     @Override
-    public int hashCode() {
-        int result = f;
-        result = 31 * result + n;
-        result = 31 * result + k;
-        result = 31 * result + m;
-        return result;
-    }
-
-    @Override
     public String toString() {
         return String.format("f: %d, n: %d, k: %d, m: %d", f, n, k, m);
-    }
-
-    protected double logMN(double m, double n) {
-        return Math.log(n) / Math.log(m);
     }
 }

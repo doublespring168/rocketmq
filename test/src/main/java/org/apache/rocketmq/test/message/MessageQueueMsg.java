@@ -17,13 +17,10 @@
 
 package org.apache.rocketmq.test.message;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import org.apache.rocketmq.common.message.MessageQueue;
 import org.apache.rocketmq.test.factory.MQMessageFactory;
+
+import java.util.*;
 
 public class MessageQueueMsg {
     private Map<MessageQueue, List<Object>> msgsWithMQ = null;
@@ -41,6 +38,13 @@ public class MessageQueueMsg {
         init();
     }
 
+    private void init() {
+        for (MessageQueue mq : msgsWithMQ.keySet()) {
+            msgsWithMQId.put(mq.getQueueId(), msgsWithMQ.get(mq));
+            msgBodys.addAll(MQMessageFactory.getMessageBody(msgsWithMQ.get(mq)));
+        }
+    }
+
     public Map<MessageQueue, List<Object>> getMsgsWithMQ() {
         return msgsWithMQ;
     }
@@ -51,12 +55,5 @@ public class MessageQueueMsg {
 
     public Collection<Object> getMsgBodys() {
         return msgBodys;
-    }
-
-    private void init() {
-        for (MessageQueue mq : msgsWithMQ.keySet()) {
-            msgsWithMQId.put(mq.getQueueId(), msgsWithMQ.get(mq));
-            msgBodys.addAll(MQMessageFactory.getMessageBody(msgsWithMQ.get(mq)));
-        }
     }
 }

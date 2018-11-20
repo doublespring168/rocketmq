@@ -17,11 +17,11 @@
 package org.apache.rocketmq.remoting.common;
 
 import io.netty.channel.Channel;
+import org.apache.rocketmq.logging.InternalLogger;
+import org.apache.rocketmq.logging.InternalLoggerFactory;
 import org.apache.rocketmq.remoting.exception.RemotingConnectException;
 import org.apache.rocketmq.remoting.exception.RemotingSendRequestException;
 import org.apache.rocketmq.remoting.exception.RemotingTimeoutException;
-import org.apache.rocketmq.logging.InternalLogger;
-import org.apache.rocketmq.logging.InternalLoggerFactory;
 import org.apache.rocketmq.remoting.protocol.RemotingCommand;
 
 import java.io.IOException;
@@ -59,8 +59,8 @@ public class RemotingHelper {
     }
 
     public static RemotingCommand invokeSync(final String addr, final RemotingCommand request,
-        final long timeoutMillis) throws InterruptedException, RemotingConnectException,
-        RemotingSendRequestException, RemotingTimeoutException {
+                                             final long timeoutMillis) throws InterruptedException, RemotingConnectException,
+            RemotingSendRequestException, RemotingTimeoutException {
         long beginTime = System.currentTimeMillis();
         SocketAddress socketAddress = RemotingUtil.string2SocketAddress(addr);
         SocketChannel socketChannel = RemotingUtil.connect(socketAddress);

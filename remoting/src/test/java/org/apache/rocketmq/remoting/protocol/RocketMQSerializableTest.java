@@ -16,8 +16,9 @@
  */
 package org.apache.rocketmq.remoting.protocol;
 
-import java.util.HashMap;
 import org.junit.Test;
+
+import java.util.HashMap;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -53,6 +54,15 @@ public class RocketMQSerializableTest {
         assertThat(decodedCommand.getExtFields()).isNull();
     }
 
+    private short parseToShort(byte[] array, int index) {
+        return (short) (array[index] * 256 + array[++index]);
+    }
+
+    private int parseToInt(byte[] array, int index) {
+        return array[index] * 16777216 + array[++index] * 65536 + array[++index] * 256
+                + array[++index];
+    }
+
     @Test
     public void testRocketMQProtocolEncodeAndDecode_WithRemarkWithoutExtFields() {
         System.setProperty(RemotingCommand.REMOTING_VERSION_KEY, "2333");
@@ -60,7 +70,7 @@ public class RocketMQSerializableTest {
         //org.apache.rocketmq.common.protocol.RequestCode.REGISTER_BROKER
         int code = 103;
         RemotingCommand cmd = RemotingCommand.createRequestCommand(code,
-            new SampleCommandCustomHeader());
+                new SampleCommandCustomHeader());
         cmd.setSerializeTypeCurrentRPC(SerializeType.ROCKETMQ);
         cmd.setRemark("Sample Remark");
 
@@ -98,7 +108,7 @@ public class RocketMQSerializableTest {
         //org.apache.rocketmq.common.protocol.RequestCode.REGISTER_BROKER
         int code = 103;
         RemotingCommand cmd = RemotingCommand.createRequestCommand(code,
-            new SampleCommandCustomHeader());
+                new SampleCommandCustomHeader());
         cmd.setSerializeTypeCurrentRPC(SerializeType.ROCKETMQ);
         cmd.addExtField("key", "value");
 
@@ -140,14 +150,5 @@ public class RocketMQSerializableTest {
         assertThat(RocketMQSerializable.isBlank(null)).isTrue();
         assertThat(RocketMQSerializable.isBlank("")).isTrue();
         assertThat(RocketMQSerializable.isBlank("  ")).isTrue();
-    }
-
-    private short parseToShort(byte[] array, int index) {
-        return (short) (array[index] * 256 + array[++index]);
-    }
-
-    private int parseToInt(byte[] array, int index) {
-        return array[index] * 16777216 + array[++index] * 65536 + array[++index] * 256
-            + array[++index];
     }
 }

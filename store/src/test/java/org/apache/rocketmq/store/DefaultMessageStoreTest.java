@@ -17,6 +17,15 @@
 
 package org.apache.rocketmq.store;
 
+import org.apache.rocketmq.common.BrokerConfig;
+import org.apache.rocketmq.common.UtilAll;
+import org.apache.rocketmq.store.config.FlushDiskType;
+import org.apache.rocketmq.store.config.MessageStoreConfig;
+import org.apache.rocketmq.store.stats.BrokerStatsManager;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
 import java.io.File;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -24,15 +33,6 @@ import java.net.SocketAddress;
 import java.nio.channels.OverlappingFileLockException;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import org.apache.rocketmq.common.BrokerConfig;
-import org.apache.rocketmq.common.UtilAll;
-import org.apache.rocketmq.store.config.FlushDiskType;
-import org.apache.rocketmq.store.config.MessageStoreConfig;
-import org.junit.After;
-import org.apache.rocketmq.store.stats.BrokerStatsManager;
-import org.junit.Before;
-import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertTrue;
@@ -55,6 +55,17 @@ public class DefaultMessageStoreTest {
         boolean load = messageStore.load();
         assertTrue(load);
         messageStore.start();
+    }
+
+    private MessageStore buildMessageStore() throws Exception {
+        MessageStoreConfig messageStoreConfig = new MessageStoreConfig();
+        messageStoreConfig.setMapedFileSizeCommitLog(1024 * 1024 * 10);
+        messageStoreConfig.setMapedFileSizeConsumeQueue(1024 * 1024 * 10);
+        messageStoreConfig.setMaxHashSlotNum(10000);
+        messageStoreConfig.setMaxIndexNum(100 * 100);
+        messageStoreConfig.setFlushDiskType(FlushDiskType.SYNC_FLUSH);
+        messageStoreConfig.setFlushIntervalConsumeQueue(1);
+        return new DefaultMessageStore(messageStoreConfig, new BrokerStatsManager("simpleTest"), new MyMessageArrivingListener(), new BrokerConfig());
     }
 
     @Test(expected = OverlappingFileLockException.class)
@@ -89,17 +100,6 @@ public class DefaultMessageStoreTest {
         MessageStoreConfig messageStoreConfig = new MessageStoreConfig();
         File file = new File(messageStoreConfig.getStorePathRootDir());
         UtilAll.deleteFile(file);
-    }
-
-    private MessageStore buildMessageStore() throws Exception {
-        MessageStoreConfig messageStoreConfig = new MessageStoreConfig();
-        messageStoreConfig.setMapedFileSizeCommitLog(1024 * 1024 * 10);
-        messageStoreConfig.setMapedFileSizeConsumeQueue(1024 * 1024 * 10);
-        messageStoreConfig.setMaxHashSlotNum(10000);
-        messageStoreConfig.setMaxIndexNum(100 * 100);
-        messageStoreConfig.setFlushDiskType(FlushDiskType.SYNC_FLUSH);
-        messageStoreConfig.setFlushIntervalConsumeQueue(1);
-        return new DefaultMessageStore(messageStoreConfig, new BrokerStatsManager("simpleTest"), new MyMessageArrivingListener(), new BrokerConfig());
     }
 
     @Test

@@ -17,29 +17,10 @@
 
 package org.apache.rocketmq.logging.inner;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.FilterWriter;
-import java.io.IOException;
-import java.io.InterruptedIOException;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.Writer;
+import java.io.*;
 import java.text.MessageFormat;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Collection;
-import java.util.Date;
-import java.util.Enumeration;
-import java.util.GregorianCalendar;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.TimeZone;
+import java.util.*;
 
 public class LoggingBuilder {
 
@@ -51,6 +32,10 @@ public class LoggingBuilder {
 
     public static AppenderBuilder newAppenderBuilder() {
         return new AppenderBuilder();
+    }
+
+    public static LayoutBuilder newLayoutBuilder() {
+        return new LayoutBuilder();
     }
 
     public static class AppenderBuilder {
@@ -147,13 +132,9 @@ public class LoggingBuilder {
         private final List<LoggingEvent> buffer = new ArrayList<LoggingEvent>();
 
         private final Map<String, DiscardSummary> discardMap = new HashMap<String, DiscardSummary>();
-
-        private int bufferSize = DEFAULT_BUFFER_SIZE;
-
         private final AppenderPipelineImpl appenderPipeline;
-
         private final Thread dispatcher;
-
+        private int bufferSize = DEFAULT_BUFFER_SIZE;
         private boolean blocking = true;
 
         public AsyncAppender() {
@@ -173,7 +154,11 @@ public class LoggingBuilder {
             }
         }
 
-        public void append(final LoggingEvent event) {
+        public Enumeration getAllAppenders() {
+            synchronized (appenderPipeline) {
+                return appenderPipeline.getAllAppenders();
+            }
+        }        public void append(final LoggingEvent event) {
             if ((dispatcher == null) || !dispatcher.isAlive() || (bufferSize <= 0)) {
                 synchronized (appenderPipeline) {
                     appenderPipeline.appendLoopOnAppenders(event);
@@ -201,8 +186,8 @@ public class LoggingBuilder {
 
                     boolean discard = true;
                     if (blocking
-                        && !Thread.interrupted()
-                        && Thread.currentThread() != dispatcher) {
+                            && !Thread.interrupted()
+                            && Thread.currentThread() != dispatcher) {
                         try {
                             buffer.wait();
                             discard = false;
@@ -227,7 +212,11 @@ public class LoggingBuilder {
             }
         }
 
-        public void close() {
+        public Appender getAppender(final String name) {
+            synchronized (appenderPipeline) {
+                return appenderPipeline.getAppender(name);
+            }
+        }        public void close() {
 
             synchronized (buffer) {
                 closed = true;
@@ -239,8 +228,8 @@ public class LoggingBuilder {
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 SysLogger.error(
-                    "Got an InterruptedException while waiting for the "
-                        + "dispatcher to finish.", e);
+                        "Got an InterruptedException while waiting for the "
+                                + "dispatcher to finish.", e);
             }
 
             synchronized (appenderPipeline) {
@@ -253,18 +242,6 @@ public class LoggingBuilder {
                         }
                     }
                 }
-            }
-        }
-
-        public Enumeration getAllAppenders() {
-            synchronized (appenderPipeline) {
-                return appenderPipeline.getAllAppenders();
-            }
-        }
-
-        public Appender getAppender(final String name) {
-            synchronized (appenderPipeline) {
-                return appenderPipeline.getAppender(name);
             }
         }
 
@@ -292,6 +269,10 @@ public class LoggingBuilder {
             }
         }
 
+        public int getBufferSize() {
+            return bufferSize;
+        }
+
         public void setBufferSize(final int size) {
             if (size < 0) {
                 throw new NegativeArraySizeException("size");
@@ -303,8 +284,8 @@ public class LoggingBuilder {
             }
         }
 
-        public int getBufferSize() {
-            return bufferSize;
+        public boolean getBlocking() {
+            return blocking;
         }
 
         public void setBlocking(final boolean value) {
@@ -312,10 +293,6 @@ public class LoggingBuilder {
                 blocking = value;
                 buffer.notifyAll();
             }
-        }
-
-        public boolean getBlocking() {
-            return blocking;
         }
 
         private final class DiscardSummary {
@@ -338,16 +315,16 @@ public class LoggingBuilder {
 
             public LoggingEvent createEvent() {
                 String msg =
-                    MessageFormat.format(
-                        "Discarded {0} messages due to full event buffer including: {1}",
-                        count, maxEvent.getMessage());
+                        MessageFormat.format(
+                                "Discarded {0} messages due to full event buffer including: {1}",
+                                count, maxEvent.getMessage());
 
                 return new LoggingEvent(
-                    "AsyncAppender.DONT_REPORT_LOCATION",
-                    Logger.getLogger(maxEvent.getLoggerName()),
-                    maxEvent.getLevel(),
-                    msg,
-                    null);
+                        "AsyncAppender.DONT_REPORT_LOCATION",
+                        Logger.getLogger(maxEvent.getLoggerName()),
+                        maxEvent.getLevel(),
+                        msg,
+                        null);
             }
         }
 
@@ -362,8 +339,8 @@ public class LoggingBuilder {
             private final AppenderPipelineImpl appenderPipeline;
 
             public Dispatcher(
-                final AsyncAppender parent, final List<LoggingEvent> buffer, final Map<String, DiscardSummary> discardMap,
-                final AppenderPipelineImpl appenderPipeline) {
+                    final AsyncAppender parent, final List<LoggingEvent> buffer, final Map<String, DiscardSummary> discardMap,
+                    final AppenderPipelineImpl appenderPipeline) {
 
                 this.parent = parent;
                 this.buffer = buffer;
@@ -417,6 +394,10 @@ public class LoggingBuilder {
                 }
             }
         }
+
+
+
+
     }
 
     private static class QuietWriter extends FilterWriter {
@@ -434,7 +415,7 @@ public class LoggingBuilder {
                     out.write(string);
                 } catch (Exception e) {
                     appender.handleError("Failed to write [" + string + "].", e,
-                        Appender.CODE_WRITE_FAILURE);
+                            Appender.CODE_WRITE_FAILURE);
                 }
             }
         }
@@ -444,7 +425,7 @@ public class LoggingBuilder {
                 out.flush();
             } catch (Exception e) {
                 appender.handleError("Failed to flush writer,", e,
-                    Appender.CODE_FLUSH_FAILURE);
+                        Appender.CODE_FLUSH_FAILURE);
             }
         }
     }
@@ -463,62 +444,15 @@ public class LoggingBuilder {
 
         }
 
-        public void setImmediateFlush(boolean value) {
-            immediateFlush = value;
-        }
-
-
         public boolean getImmediateFlush() {
             return immediateFlush;
         }
 
+        public void setImmediateFlush(boolean value) {
+            immediateFlush = value;
+        }
+
         public void activateOptions() {
-        }
-
-
-        public void append(LoggingEvent event) {
-            if (!checkEntryConditions()) {
-                return;
-            }
-            subAppend(event);
-        }
-
-        protected boolean checkEntryConditions() {
-            if (this.closed) {
-                SysLogger.warn("Not allowed to write to a closed appender.");
-                return false;
-            }
-
-            if (this.qw == null) {
-                handleError("No output stream or file set for the appender named [" +
-                    name + "].");
-                return false;
-            }
-
-            if (this.layout == null) {
-                handleError("No layout set for the appender named [" + name + "].");
-                return false;
-            }
-            return true;
-        }
-
-        public synchronized void close() {
-            if (this.closed) {
-                return;
-            }
-            this.closed = true;
-            writeFooter();
-            reset();
-        }
-
-        protected void closeWriter() {
-            if (qw != null) {
-                try {
-                    qw.close();
-                } catch (IOException e) {
-                    handleError("Could not close " + qw, e, CODE_CLOSE_FAILURE);
-                }
-            }
         }
 
         protected OutputStreamWriter createWriter(OutputStream os) {
@@ -537,22 +471,74 @@ public class LoggingBuilder {
                 retval = new OutputStreamWriter(os);
             }
             return retval;
+        }        public void append(LoggingEvent event) {
+            if (!checkEntryConditions()) {
+                return;
+            }
+            subAppend(event);
         }
 
         public String getEncoding() {
             return encoding;
+        }        protected boolean checkEntryConditions() {
+            if (this.closed) {
+                SysLogger.warn("Not allowed to write to a closed appender.");
+                return false;
+            }
+
+            if (this.qw == null) {
+                handleError("No output stream or file set for the appender named [" +
+                        name + "].");
+                return false;
+            }
+
+            if (this.layout == null) {
+                handleError("No layout set for the appender named [" + name + "].");
+                return false;
+            }
+            return true;
         }
 
         public void setEncoding(String value) {
             encoding = value;
+        }        public synchronized void close() {
+            if (this.closed) {
+                return;
+            }
+            this.closed = true;
+            writeFooter();
+            reset();
         }
-
 
         public synchronized void setWriter(Writer writer) {
             reset();
             this.qw = new QuietWriter(writer, this);
             writeHeader();
+        }        protected void closeWriter() {
+            if (qw != null) {
+                try {
+                    qw.close();
+                } catch (IOException e) {
+                    handleError("Could not close " + qw, e, CODE_CLOSE_FAILURE);
+                }
+            }
         }
+
+        protected void writeHeader() {
+            if (layout != null) {
+                String h = layout.getHeader();
+                if (h != null && this.qw != null) {
+                    this.qw.write(h);
+                }
+            }
+        }
+
+
+
+
+
+
+
 
         protected void subAppend(LoggingEvent event) {
             this.qw.write(this.layout.format(event));
@@ -587,20 +573,12 @@ public class LoggingBuilder {
             }
         }
 
-        protected void writeHeader() {
-            if (layout != null) {
-                String h = layout.getHeader();
-                if (h != null && this.qw != null) {
-                    this.qw.write(h);
-                }
-            }
-        }
+
 
         protected boolean shouldFlush(final LoggingEvent event) {
             return event != null && immediateFlush;
         }
     }
-
 
     public static class FileAppender extends WriterAppender {
 
@@ -616,75 +594,13 @@ public class LoggingBuilder {
         }
 
         public FileAppender(Layout layout, String filename, boolean append)
-            throws IOException {
+                throws IOException {
             this.layout = layout;
             this.setFile(filename, append, false, bufferSize);
         }
 
-        public void setFile(String file) {
-            fileName = file.trim();
-        }
-
-        public boolean getAppend() {
-            return fileAppend;
-        }
-
-        public String getFile() {
-            return fileName;
-        }
-
-        public void activateOptions() {
-            if (fileName != null) {
-                try {
-                    setFile(fileName, fileAppend, bufferedIO, bufferSize);
-                } catch (IOException e) {
-                    handleError("setFile(" + fileName + "," + fileAppend + ") call failed.",
-                        e, CODE_FILE_OPEN_FAILURE);
-                }
-            } else {
-                SysLogger.warn("File option not set for appender [" + name + "].");
-                SysLogger.warn("Are you using FileAppender instead of ConsoleAppender?");
-            }
-        }
-
-        protected void closeFile() {
-            if (this.qw != null) {
-                try {
-                    this.qw.close();
-                } catch (IOException e) {
-                    if (e instanceof InterruptedIOException) {
-                        Thread.currentThread().interrupt();
-                    }
-                    SysLogger.error("Could not close " + qw, e);
-                }
-            }
-        }
-
-        public boolean getBufferedIO() {
-            return this.bufferedIO;
-        }
-
-        public int getBufferSize() {
-            return this.bufferSize;
-        }
-
-        public void setAppend(boolean flag) {
-            fileAppend = flag;
-        }
-
-        public void setBufferedIO(boolean bufferedIO) {
-            this.bufferedIO = bufferedIO;
-            if (bufferedIO) {
-                immediateFlush = false;
-            }
-        }
-
-        public void setBufferSize(int bufferSize) {
-            this.bufferSize = bufferSize;
-        }
-
         public synchronized void setFile(String fileName, boolean append, boolean bufferedIO, int bufferSize)
-            throws IOException {
+                throws IOException {
             SysLogger.debug("setFile called: " + fileName + ", " + append);
 
             if (bufferedIO) {
@@ -725,13 +641,74 @@ public class LoggingBuilder {
             this.qw = new QuietWriter(writer, this);
         }
 
+        protected void closeFile() {
+            if (this.qw != null) {
+                try {
+                    this.qw.close();
+                } catch (IOException e) {
+                    if (e instanceof InterruptedIOException) {
+                        Thread.currentThread().interrupt();
+                    }
+                    SysLogger.error("Could not close " + qw, e);
+                }
+            }
+        }
+
+        public boolean getAppend() {
+            return fileAppend;
+        }
+
+        public void setAppend(boolean flag) {
+            fileAppend = flag;
+        }
+
+        public String getFile() {
+            return fileName;
+        }
+
+        public void setFile(String file) {
+            fileName = file.trim();
+        }
+
+        public void activateOptions() {
+            if (fileName != null) {
+                try {
+                    setFile(fileName, fileAppend, bufferedIO, bufferSize);
+                } catch (IOException e) {
+                    handleError("setFile(" + fileName + "," + fileAppend + ") call failed.",
+                            e, CODE_FILE_OPEN_FAILURE);
+                }
+            } else {
+                SysLogger.warn("File option not set for appender [" + name + "].");
+                SysLogger.warn("Are you using FileAppender instead of ConsoleAppender?");
+            }
+        }
+
+        public boolean getBufferedIO() {
+            return this.bufferedIO;
+        }
+
+        public void setBufferedIO(boolean bufferedIO) {
+            this.bufferedIO = bufferedIO;
+            if (bufferedIO) {
+                immediateFlush = false;
+            }
+        }
+
+        public int getBufferSize() {
+            return this.bufferSize;
+        }
+
+        public void setBufferSize(int bufferSize) {
+            this.bufferSize = bufferSize;
+        }
+
         protected void reset() {
             closeFile();
             this.fileName = null;
             super.reset();
         }
     }
-
 
     public static class RollingFileAppender extends FileAppender {
 
@@ -749,11 +726,13 @@ public class LoggingBuilder {
             return maxBackupIndex;
         }
 
-        public long getMaximumFileSize() {
-            return maxFileSize;
+        public void setMaxBackupIndex(int maxBackups) {
+            this.maxBackupIndex = maxBackups;
         }
 
-        public void rollOver() {
+        public long getMaximumFileSize() {
+            return maxFileSize;
+        }        public void rollOver() {
             File target;
             File file;
 
@@ -815,34 +794,14 @@ public class LoggingBuilder {
             }
         }
 
-        public synchronized void setFile(String fileName, boolean append, boolean bufferedIO, int bufferSize)
-            throws IOException {
+        public void setMaximumFileSize(long maxFileSize) {
+            this.maxFileSize = maxFileSize;
+        }        public synchronized void setFile(String fileName, boolean append, boolean bufferedIO, int bufferSize)
+                throws IOException {
             super.setFile(fileName, append, this.bufferedIO, this.bufferSize);
             if (append) {
                 File f = new File(fileName);
                 ((CountingQuietWriter) qw).setCount(f.length());
-            }
-        }
-
-        public void setMaxBackupIndex(int maxBackups) {
-            this.maxBackupIndex = maxBackups;
-        }
-
-        public void setMaximumFileSize(long maxFileSize) {
-            this.maxFileSize = maxFileSize;
-        }
-
-        protected void setQWForFiles(Writer writer) {
-            this.qw = new CountingQuietWriter(writer, this);
-        }
-
-        protected void subAppend(LoggingEvent event) {
-            super.subAppend(event);
-            if (fileName != null && qw != null) {
-                long size = ((CountingQuietWriter) qw).getCount();
-                if (size >= maxFileSize && size >= nextRollover) {
-                    rollOver();
-                }
             }
         }
 
@@ -872,8 +831,25 @@ public class LoggingBuilder {
             }
 
         }
-    }
 
+
+
+        protected void setQWForFiles(Writer writer) {
+            this.qw = new CountingQuietWriter(writer, this);
+        }
+
+        protected void subAppend(LoggingEvent event) {
+            super.subAppend(event);
+            if (fileName != null && qw != null) {
+                long size = ((CountingQuietWriter) qw).getCount();
+                if (size >= maxFileSize && size >= nextRollover) {
+                    rollOver();
+                }
+            }
+        }
+
+
+    }
 
     public static class DailyRollingFileAppender extends FileAppender {
 
@@ -884,33 +860,24 @@ public class LoggingBuilder {
         static final int TOP_OF_DAY = 3;
         static final int TOP_OF_WEEK = 4;
         static final int TOP_OF_MONTH = 5;
-
-
+        final TimeZone gmtTimeZone = TimeZone.getTimeZone("GMT");
+        Date now = new Date();
+        SimpleDateFormat sdf;
+        RollingCalendar rc = new RollingCalendar();
         /**
          * The date pattern. By default, the pattern is set to
          * "'.'yyyy-MM-dd" meaning daily rollover.
          */
         private String datePattern = "'.'yyyy-MM-dd";
-
         private String scheduledFilename;
-
         private long nextCheck = System.currentTimeMillis() - 1;
-
-        Date now = new Date();
-
-        SimpleDateFormat sdf;
-
-        RollingCalendar rc = new RollingCalendar();
-
-        final TimeZone gmtTimeZone = TimeZone.getTimeZone("GMT");
-
-
-        public void setDatePattern(String pattern) {
-            datePattern = pattern;
-        }
 
         public String getDatePattern() {
             return datePattern;
+        }
+
+        public void setDatePattern(String pattern) {
+            datePattern = pattern;
         }
 
         public void activateOptions() {
@@ -927,6 +894,26 @@ public class LoggingBuilder {
             } else {
                 SysLogger.error("Either File or DatePattern options are not set for appender [" + name + "].");
             }
+        }
+
+        int computeCheckPeriod() {
+            RollingCalendar rollingCalendar = new RollingCalendar(gmtTimeZone, Locale.getDefault());
+            // set sate to 1970-01-01 00:00:00 GMT
+            Date epoch = new Date(0);
+            if (datePattern != null) {
+                for (int i = TOP_OF_MINUTE; i <= TOP_OF_MONTH; i++) {
+                    SimpleDateFormat simpleDateFormat = new SimpleDateFormat(datePattern);
+                    simpleDateFormat.setTimeZone(gmtTimeZone);
+                    String r0 = simpleDateFormat.format(epoch);
+                    rollingCalendar.setType(i);
+                    Date next = new Date(rollingCalendar.getNextCheckMillis(epoch));
+                    String r1 = simpleDateFormat.format(next);
+                    if (r0 != null && r1 != null && !r0.equals(r1)) {
+                        return i;
+                    }
+                }
+            }
+            return TOP_OF_TROUBLE;
         }
 
         void printPeriodicity(int type) {
@@ -952,26 +939,6 @@ public class LoggingBuilder {
                 default:
                     SysLogger.warn("Unknown periodicity for appender [" + name + "].");
             }
-        }
-
-        int computeCheckPeriod() {
-            RollingCalendar rollingCalendar = new RollingCalendar(gmtTimeZone, Locale.getDefault());
-            // set sate to 1970-01-01 00:00:00 GMT
-            Date epoch = new Date(0);
-            if (datePattern != null) {
-                for (int i = TOP_OF_MINUTE; i <= TOP_OF_MONTH; i++) {
-                    SimpleDateFormat simpleDateFormat = new SimpleDateFormat(datePattern);
-                    simpleDateFormat.setTimeZone(gmtTimeZone);
-                    String r0 = simpleDateFormat.format(epoch);
-                    rollingCalendar.setType(i);
-                    Date next = new Date(rollingCalendar.getNextCheckMillis(epoch));
-                    String r1 = simpleDateFormat.format(next);
-                    if (r0 != null && r1 != null && !r0.equals(r1)) {
-                        return i;
-                    }
-                }
-            }
-            return TOP_OF_TROUBLE;
         }
 
         void rollOver() throws IOException {
@@ -1112,6 +1079,10 @@ public class LoggingBuilder {
         public ConsoleAppender() {
         }
 
+        public String getTarget() {
+            return target;
+        }
+
         public void setTarget(String value) {
             String v = value.trim();
 
@@ -1122,10 +1093,6 @@ public class LoggingBuilder {
             } else {
                 targetWarn(value);
             }
-        }
-
-        public String getTarget() {
-            return target;
         }
 
         void targetWarn(String val) {
@@ -1145,10 +1112,6 @@ public class LoggingBuilder {
         protected final void closeWriter() {
 
         }
-    }
-
-    public static LayoutBuilder newLayoutBuilder() {
-        return new LayoutBuilder();
     }
 
     public static class LayoutBuilder {

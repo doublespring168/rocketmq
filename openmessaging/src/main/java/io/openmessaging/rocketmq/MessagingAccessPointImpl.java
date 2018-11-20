@@ -38,13 +38,13 @@ public class MessagingAccessPointImpl implements MessagingAccessPoint {
     }
 
     @Override
-    public KeyValue attributes() {
-        return accessPointProperties;
+    public String implVersion() {
+        return "0.3.0";
     }
 
     @Override
-    public String implVersion() {
-        return "0.3.0";
+    public KeyValue attributes() {
+        return accessPointProperties;
     }
 
     @Override

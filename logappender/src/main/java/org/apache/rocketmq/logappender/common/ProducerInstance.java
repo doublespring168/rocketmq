@@ -39,18 +39,8 @@ public class ProducerInstance {
     public static final String LOGBACK_APPENDER = "LOGBACK_APPENDER";
 
     public static final String DEFAULT_GROUP = "rocketmq_appender";
-
-    private ConcurrentHashMap<String, MQProducer> producerMap = new ConcurrentHashMap<String, MQProducer>();
-
     private static ProducerInstance instance = new ProducerInstance();
-
-    public static ProducerInstance getProducerInstance() {
-        return instance;
-    }
-
-    private String genKey(String nameServerAddress, String group) {
-        return nameServerAddress + "_" + group;
-    }
+    private ConcurrentHashMap<String, MQProducer> producerMap = new ConcurrentHashMap<String, MQProducer>();
 
     public MQProducer getInstance(String nameServerAddress, String group) throws MQClientException {
         if (StringUtils.isBlank(group)) {
@@ -72,6 +62,14 @@ public class ProducerInstance {
         }
         defaultMQProducer.start();
         return defaultMQProducer;
+    }
+
+    private String genKey(String nameServerAddress, String group) {
+        return nameServerAddress + "_" + group;
+    }
+
+    public static ProducerInstance getProducerInstance() {
+        return instance;
     }
 
     public void removeAndClose(String nameServerAddress, String group) {

@@ -36,15 +36,22 @@ public abstract class BinaryExpression implements Expression {
         return left;
     }
 
+    /**
+     * @param expression
+     */
+    public void setLeft(Expression expression) {
+        left = expression;
+    }
+
     public Expression getRight() {
         return right;
     }
 
     /**
-     * @see Object#toString()
+     * @param expression
      */
-    public String toString() {
-        return "(" + left.toString() + " " + getExpressionSymbol() + " " + right.toString() + ")";
+    public void setRight(Expression expression) {
+        right = expression;
     }
 
     /**
@@ -67,23 +74,16 @@ public abstract class BinaryExpression implements Expression {
     }
 
     /**
+     * @see Object#toString()
+     */
+    public String toString() {
+        return "(" + left.toString() + " " + getExpressionSymbol() + " " + right.toString() + ")";
+    }
+
+    /**
      * Returns the symbol that represents this binary expression.  For example, addition is
      * represented by "+"
      */
     public abstract String getExpressionSymbol();
-
-    /**
-     * @param expression
-     */
-    public void setRight(Expression expression) {
-        right = expression;
-    }
-
-    /**
-     * @param expression
-     */
-    public void setLeft(Expression expression) {
-        left = expression;
-    }
 
 }

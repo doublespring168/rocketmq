@@ -16,10 +16,6 @@
  */
 package org.apache.rocketmq.broker.latency;
 
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import org.apache.rocketmq.broker.BrokerController;
 import org.apache.rocketmq.common.ThreadFactoryImpl;
 import org.apache.rocketmq.common.constant.LoggerName;
@@ -28,6 +24,11 @@ import org.apache.rocketmq.logging.InternalLoggerFactory;
 import org.apache.rocketmq.remoting.netty.RequestTask;
 import org.apache.rocketmq.remoting.protocol.RemotingSysResponseCode;
 
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
 /**
  * BrokerFastFailure will cover {@link BrokerController#sendThreadPoolQueue} and
  * {@link BrokerController#pullThreadPoolQueue}
@@ -35,24 +36,11 @@ import org.apache.rocketmq.remoting.protocol.RemotingSysResponseCode;
 public class BrokerFastFailure {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.BROKER_LOGGER_NAME);
     private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new ThreadFactoryImpl(
-        "BrokerFastFailureScheduledThread"));
+            "BrokerFastFailureScheduledThread"));
     private final BrokerController brokerController;
 
     public BrokerFastFailure(final BrokerController brokerController) {
         this.brokerController = brokerController;
-    }
-
-    public static RequestTask castRunnable(final Runnable runnable) {
-        try {
-            if (runnable instanceof FutureTaskExt) {
-                FutureTaskExt object = (FutureTaskExt) runnable;
-                return (RequestTask) object.getRunnable();
-            }
-        } catch (Throwable e) {
-            log.error(String.format("castRunnable exception, %s", runnable.getClass().getName()), e);
-        }
-
-        return null;
     }
 
     public void start() {
@@ -85,16 +73,29 @@ public class BrokerFastFailure {
         }
 
         cleanExpiredRequestInQueue(this.brokerController.getSendThreadPoolQueue(),
-            this.brokerController.getBrokerConfig().getWaitTimeMillsInSendQueue());
+                this.brokerController.getBrokerConfig().getWaitTimeMillsInSendQueue());
 
         cleanExpiredRequestInQueue(this.brokerController.getPullThreadPoolQueue(),
-            this.brokerController.getBrokerConfig().getWaitTimeMillsInPullQueue());
+                this.brokerController.getBrokerConfig().getWaitTimeMillsInPullQueue());
 
         cleanExpiredRequestInQueue(this.brokerController.getHeartbeatThreadPoolQueue(),
-            this.brokerController.getBrokerConfig().getWaitTimeMillsInHeartbeatQueue());
+                this.brokerController.getBrokerConfig().getWaitTimeMillsInHeartbeatQueue());
 
         cleanExpiredRequestInQueue(this.brokerController.getEndTransactionThreadPoolQueue(), this
-            .brokerController.getBrokerConfig().getWaitTimeMillsInTransactionQueue());
+                .brokerController.getBrokerConfig().getWaitTimeMillsInTransactionQueue());
+    }
+
+    public static RequestTask castRunnable(final Runnable runnable) {
+        try {
+            if (runnable instanceof FutureTaskExt) {
+                FutureTaskExt object = (FutureTaskExt) runnable;
+                return (RequestTask) object.getRunnable();
+            }
+        } catch (Throwable e) {
+            log.error(String.format("castRunnable exception, %s", runnable.getClass().getName()), e);
+        }
+
+        return null;
     }
 
     void cleanExpiredRequestInQueue(final BlockingQueue<Runnable> blockingQueue, final long maxWaitTimeMillsInQueue) {

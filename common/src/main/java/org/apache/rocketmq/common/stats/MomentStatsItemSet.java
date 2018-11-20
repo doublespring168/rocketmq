@@ -17,18 +17,19 @@
 
 package org.apache.rocketmq.common.stats;
 
+import org.apache.rocketmq.common.UtilAll;
+import org.apache.rocketmq.logging.InternalLogger;
+
 import java.util.Iterator;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import org.apache.rocketmq.common.UtilAll;
-import org.apache.rocketmq.logging.InternalLogger;
 
 public class MomentStatsItemSet {
     private final ConcurrentMap<String/* key */, MomentStatsItem> statsItemTable =
-        new ConcurrentHashMap<String, MomentStatsItem>(128);
+            new ConcurrentHashMap<String, MomentStatsItem>(128);
     private final String statsName;
     private final ScheduledExecutorService scheduledExecutorService;
     private final InternalLogger log;
@@ -38,14 +39,6 @@ public class MomentStatsItemSet {
         this.scheduledExecutorService = scheduledExecutorService;
         this.log = log;
         this.init();
-    }
-
-    public ConcurrentMap<String, MomentStatsItem> getStatsItemTable() {
-        return statsItemTable;
-    }
-
-    public String getStatsName() {
-        return statsName;
     }
 
     public void init() {
@@ -69,6 +62,14 @@ public class MomentStatsItemSet {
         }
     }
 
+    public ConcurrentMap<String, MomentStatsItem> getStatsItemTable() {
+        return statsItemTable;
+    }
+
+    public String getStatsName() {
+        return statsName;
+    }
+
     public void setValue(final String statsKey, final int value) {
         MomentStatsItem statsItem = this.getAndCreateStatsItem(statsKey);
         statsItem.getValue().set(value);
@@ -78,7 +79,7 @@ public class MomentStatsItemSet {
         MomentStatsItem statsItem = this.statsItemTable.get(statsKey);
         if (null == statsItem) {
             statsItem =
-                new MomentStatsItem(this.statsName, statsKey, this.scheduledExecutorService, this.log);
+                    new MomentStatsItem(this.statsName, statsKey, this.scheduledExecutorService, this.log);
             MomentStatsItem prev = this.statsItemTable.put(statsKey, statsItem);
 
             if (null == prev) {

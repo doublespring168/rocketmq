@@ -27,7 +27,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class NettyLogger {
 
     private static AtomicBoolean nettyLoggerSeted = new AtomicBoolean(false);
-    
+
     private static InternalLogLevel nettyLogLevel = InternalLogLevel.ERROR;
 
     public static void initNettyLogger() {
@@ -59,106 +59,6 @@ public class NettyLogger {
         @Override
         public String name() {
             return logger.getName();
-        }
-
-        @Override
-        public boolean isEnabled(InternalLogLevel internalLogLevel) {
-            return nettyLogLevel.ordinal() <= internalLogLevel.ordinal();
-        }
-
-        @Override
-        public void log(InternalLogLevel internalLogLevel, String s) {
-            if (internalLogLevel.equals(InternalLogLevel.DEBUG)) {
-                logger.debug(s);
-            }
-            if (internalLogLevel.equals(InternalLogLevel.TRACE)) {
-                logger.info(s);
-            }
-            if (internalLogLevel.equals(InternalLogLevel.INFO)) {
-                logger.info(s);
-            }
-            if (internalLogLevel.equals(InternalLogLevel.WARN)) {
-                logger.warn(s);
-            }
-            if (internalLogLevel.equals(InternalLogLevel.ERROR)) {
-                logger.error(s);
-            }
-        }
-
-        @Override
-        public void log(InternalLogLevel internalLogLevel, String s, Object o) {
-            if (internalLogLevel.equals(InternalLogLevel.DEBUG)) {
-                logger.debug(s, o);
-            }
-            if (internalLogLevel.equals(InternalLogLevel.TRACE)) {
-                logger.info(s, o);
-            }
-            if (internalLogLevel.equals(InternalLogLevel.INFO)) {
-                logger.info(s, o);
-            }
-            if (internalLogLevel.equals(InternalLogLevel.WARN)) {
-                logger.warn(s, o);
-            }
-            if (internalLogLevel.equals(InternalLogLevel.ERROR)) {
-                logger.error(s, o);
-            }
-        }
-
-        @Override
-        public void log(InternalLogLevel internalLogLevel, String s, Object o, Object o1) {
-            if (internalLogLevel.equals(InternalLogLevel.DEBUG)) {
-                logger.debug(s, o, o1);
-            }
-            if (internalLogLevel.equals(InternalLogLevel.TRACE)) {
-                logger.info(s, o, o1);
-            }
-            if (internalLogLevel.equals(InternalLogLevel.INFO)) {
-                logger.info(s, o, o1);
-            }
-            if (internalLogLevel.equals(InternalLogLevel.WARN)) {
-                logger.warn(s, o, o1);
-            }
-            if (internalLogLevel.equals(InternalLogLevel.ERROR)) {
-                logger.error(s, o, o1);
-            }
-        }
-
-        @Override
-        public void log(InternalLogLevel internalLogLevel, String s, Object... objects) {
-            if (internalLogLevel.equals(InternalLogLevel.DEBUG)) {
-                logger.debug(s, objects);
-            }
-            if (internalLogLevel.equals(InternalLogLevel.TRACE)) {
-                logger.info(s, objects);
-            }
-            if (internalLogLevel.equals(InternalLogLevel.INFO)) {
-                logger.info(s, objects);
-            }
-            if (internalLogLevel.equals(InternalLogLevel.WARN)) {
-                logger.warn(s, objects);
-            }
-            if (internalLogLevel.equals(InternalLogLevel.ERROR)) {
-                logger.error(s, objects);
-            }
-        }
-
-        @Override
-        public void log(InternalLogLevel internalLogLevel, String s, Throwable throwable) {
-            if (internalLogLevel.equals(InternalLogLevel.DEBUG)) {
-                logger.debug(s, throwable);
-            }
-            if (internalLogLevel.equals(InternalLogLevel.TRACE)) {
-                logger.info(s, throwable);
-            }
-            if (internalLogLevel.equals(InternalLogLevel.INFO)) {
-                logger.info(s, throwable);
-            }
-            if (internalLogLevel.equals(InternalLogLevel.WARN)) {
-                logger.warn(s, throwable);
-            }
-            if (internalLogLevel.equals(InternalLogLevel.ERROR)) {
-                logger.error(s, throwable);
-            }
         }
 
         @Override
@@ -309,6 +209,106 @@ public class NettyLogger {
         @Override
         public void error(String var1, Throwable var2) {
             logger.error(var1, var2);
+        }
+
+        @Override
+        public boolean isEnabled(InternalLogLevel internalLogLevel) {
+            return nettyLogLevel.ordinal() <= internalLogLevel.ordinal();
+        }
+
+        @Override
+        public void log(InternalLogLevel internalLogLevel, String s) {
+            if (internalLogLevel.equals(InternalLogLevel.DEBUG)) {
+                logger.debug(s);
+            }
+            if (internalLogLevel.equals(InternalLogLevel.TRACE)) {
+                logger.info(s);
+            }
+            if (internalLogLevel.equals(InternalLogLevel.INFO)) {
+                logger.info(s);
+            }
+            if (internalLogLevel.equals(InternalLogLevel.WARN)) {
+                logger.warn(s);
+            }
+            if (internalLogLevel.equals(InternalLogLevel.ERROR)) {
+                logger.error(s);
+            }
+        }
+
+        @Override
+        public void log(InternalLogLevel internalLogLevel, String s, Object o) {
+            if (internalLogLevel.equals(InternalLogLevel.DEBUG)) {
+                logger.debug(s, o);
+            }
+            if (internalLogLevel.equals(InternalLogLevel.TRACE)) {
+                logger.info(s, o);
+            }
+            if (internalLogLevel.equals(InternalLogLevel.INFO)) {
+                logger.info(s, o);
+            }
+            if (internalLogLevel.equals(InternalLogLevel.WARN)) {
+                logger.warn(s, o);
+            }
+            if (internalLogLevel.equals(InternalLogLevel.ERROR)) {
+                logger.error(s, o);
+            }
+        }
+
+        @Override
+        public void log(InternalLogLevel internalLogLevel, String s, Object o, Object o1) {
+            if (internalLogLevel.equals(InternalLogLevel.DEBUG)) {
+                logger.debug(s, o, o1);
+            }
+            if (internalLogLevel.equals(InternalLogLevel.TRACE)) {
+                logger.info(s, o, o1);
+            }
+            if (internalLogLevel.equals(InternalLogLevel.INFO)) {
+                logger.info(s, o, o1);
+            }
+            if (internalLogLevel.equals(InternalLogLevel.WARN)) {
+                logger.warn(s, o, o1);
+            }
+            if (internalLogLevel.equals(InternalLogLevel.ERROR)) {
+                logger.error(s, o, o1);
+            }
+        }
+
+        @Override
+        public void log(InternalLogLevel internalLogLevel, String s, Object... objects) {
+            if (internalLogLevel.equals(InternalLogLevel.DEBUG)) {
+                logger.debug(s, objects);
+            }
+            if (internalLogLevel.equals(InternalLogLevel.TRACE)) {
+                logger.info(s, objects);
+            }
+            if (internalLogLevel.equals(InternalLogLevel.INFO)) {
+                logger.info(s, objects);
+            }
+            if (internalLogLevel.equals(InternalLogLevel.WARN)) {
+                logger.warn(s, objects);
+            }
+            if (internalLogLevel.equals(InternalLogLevel.ERROR)) {
+                logger.error(s, objects);
+            }
+        }
+
+        @Override
+        public void log(InternalLogLevel internalLogLevel, String s, Throwable throwable) {
+            if (internalLogLevel.equals(InternalLogLevel.DEBUG)) {
+                logger.debug(s, throwable);
+            }
+            if (internalLogLevel.equals(InternalLogLevel.TRACE)) {
+                logger.info(s, throwable);
+            }
+            if (internalLogLevel.equals(InternalLogLevel.INFO)) {
+                logger.info(s, throwable);
+            }
+            if (internalLogLevel.equals(InternalLogLevel.WARN)) {
+                logger.warn(s, throwable);
+            }
+            if (internalLogLevel.equals(InternalLogLevel.ERROR)) {
+                logger.error(s, throwable);
+            }
         }
     }
 

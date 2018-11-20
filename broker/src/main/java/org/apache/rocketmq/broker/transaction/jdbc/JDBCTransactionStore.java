@@ -17,22 +17,18 @@
 
 package org.apache.rocketmq.broker.transaction.jdbc;
 
-import java.net.URL;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.List;
-import java.util.Properties;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.rocketmq.broker.transaction.TransactionRecord;
 import org.apache.rocketmq.broker.transaction.TransactionStore;
 import org.apache.rocketmq.common.MixAll;
 import org.apache.rocketmq.common.constant.LoggerName;
 import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.logging.InternalLoggerFactory;
+
+import java.net.URL;
+import java.sql.*;
+import java.util.List;
+import java.util.Properties;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class JDBCTransactionStore implements TransactionStore {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.TRANSACTION_LOGGER_NAME);
@@ -53,7 +49,7 @@ public class JDBCTransactionStore implements TransactionStore {
 
             try {
                 this.connection =
-                    DriverManager.getConnection(this.jdbcTransactionStoreConfig.getJdbcURL(), props);
+                        DriverManager.getConnection(this.jdbcTransactionStoreConfig.getJdbcURL(), props);
 
                 this.connection.setAutoCommit(false);
 
@@ -74,7 +70,7 @@ public class JDBCTransactionStore implements TransactionStore {
         try {
             Class.forName(this.jdbcTransactionStoreConfig.getJdbcDriverClass()).newInstance();
             log.info("Loaded the appropriate driver, {}",
-                this.jdbcTransactionStoreConfig.getJdbcDriverClass());
+                    this.jdbcTransactionStoreConfig.getJdbcDriverClass());
             return true;
         } catch (Exception e) {
             log.info("Loaded the appropriate driver Exception", e);

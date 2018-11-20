@@ -36,12 +36,7 @@ import org.apache.rocketmq.remoting.exception.RemotingCommandException;
 import org.apache.rocketmq.remoting.netty.NettyClientConfig;
 import org.apache.rocketmq.remoting.netty.NettyServerConfig;
 import org.apache.rocketmq.remoting.protocol.RemotingCommand;
-import org.apache.rocketmq.store.AppendMessageResult;
-import org.apache.rocketmq.store.AppendMessageStatus;
-import org.apache.rocketmq.store.MessageExtBrokerInner;
-import org.apache.rocketmq.store.MessageStore;
-import org.apache.rocketmq.store.PutMessageResult;
-import org.apache.rocketmq.store.PutMessageStatus;
+import org.apache.rocketmq.store.*;
 import org.apache.rocketmq.store.config.MessageStoreConfig;
 import org.junit.Before;
 import org.junit.Test;
@@ -60,9 +55,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @RunWith(MockitoJUnitRunner.class)
 public class SendMessageProcessorTest {
@@ -95,6 +88,48 @@ public class SendMessageProcessorTest {
     public void testProcessRequest() throws RemotingCommandException {
         when(messageStore.putMessage(any(MessageExtBrokerInner.class))).thenReturn(new PutMessageResult(PutMessageStatus.PUT_OK, new AppendMessageResult(AppendMessageStatus.PUT_OK)));
         assertPutResult(ResponseCode.SUCCESS);
+    }
+
+    private void assertPutResult(int responseCode) throws RemotingCommandException {
+        final RemotingCommand request = createSendMsgCommand(RequestCode.SEND_MESSAGE);
+        final RemotingCommand[] response = new RemotingCommand[1];
+        doAnswer(new Answer() {
+            @Override
+            public Object answer(InvocationOnMock invocation) throws Throwable {
+                response[0] = invocation.getArgument(0);
+                return null;
+            }
+        }).when(handlerContext).writeAndFlush(any(Object.class));
+        RemotingCommand responseToReturn = sendMessageProcessor.processRequest(handlerContext, request);
+        if (responseToReturn != null) {
+            assertThat(response[0]).isNull();
+            response[0] = responseToReturn;
+        }
+        assertThat(response[0].getCode()).isEqualTo(responseCode);
+        assertThat(response[0].getOpaque()).isEqualTo(request.getOpaque());
+    }
+
+    private RemotingCommand createSendMsgCommand(int requestCode) {
+        SendMessageRequestHeader requestHeader = createSendMsgRequestHeader();
+
+        RemotingCommand request = RemotingCommand.createRequestCommand(requestCode, requestHeader);
+        request.setBody(new byte[]{'a'});
+        request.makeCustomHeaderToNet();
+        return request;
+    }
+
+    private SendMessageRequestHeader createSendMsgRequestHeader() {
+        SendMessageRequestHeader requestHeader = new SendMessageRequestHeader();
+        requestHeader.setProducerGroup(group);
+        requestHeader.setTopic(topic);
+        requestHeader.setDefaultTopic(MixAll.AUTO_CREATE_TOPIC_KEY_TOPIC);
+        requestHeader.setDefaultTopicQueueNums(3);
+        requestHeader.setQueueId(1);
+        requestHeader.setSysFlag(0);
+        requestHeader.setBornTimestamp(System.currentTimeMillis());
+        requestHeader.setFlag(124);
+        requestHeader.setReconsumeTimes(0);
+        return requestHeader;
     }
 
     @Test
@@ -186,6 +221,19 @@ public class SendMessageProcessorTest {
         assertThat(response.getCode()).isEqualTo(ResponseCode.SUCCESS);
     }
 
+    private RemotingCommand createSendMsgBackCommand(int requestCode) {
+        ConsumerSendMsgBackRequestHeader requestHeader = new ConsumerSendMsgBackRequestHeader();
+
+        requestHeader.setMaxReconsumeTimes(3);
+        requestHeader.setDelayLevel(4);
+        requestHeader.setGroup(group);
+        requestHeader.setOffset(123L);
+
+        RemotingCommand request = RemotingCommand.createRequestCommand(requestCode, requestHeader);
+        request.makeCustomHeaderToNet();
+        return request;
+    }
+
     @Test
     public void testProcessRequest_Transaction() throws RemotingCommandException {
         brokerController.setTransactionalMessageService(transactionMsgService);
@@ -207,6 +255,7 @@ public class SendMessageProcessorTest {
         assertThat(response[0].getCode()).isEqualTo(ResponseCode.SUCCESS);
 
     }
+
     private RemotingCommand createSendTransactionMsgCommand(int requestCode) {
         SendMessageRequestHeader header = createSendMsgRequestHeader();
         int sysFlag = header.getSysFlag();
@@ -216,63 +265,8 @@ public class SendMessageProcessorTest {
         sysFlag |= MessageSysFlag.TRANSACTION_PREPARED_TYPE;
         header.setSysFlag(sysFlag);
         RemotingCommand request = RemotingCommand.createRequestCommand(requestCode, header);
-        request.setBody(new byte[] {'a'});
+        request.setBody(new byte[]{'a'});
         request.makeCustomHeaderToNet();
         return request;
-    }
-
-    private SendMessageRequestHeader createSendMsgRequestHeader() {
-        SendMessageRequestHeader requestHeader = new SendMessageRequestHeader();
-        requestHeader.setProducerGroup(group);
-        requestHeader.setTopic(topic);
-        requestHeader.setDefaultTopic(MixAll.AUTO_CREATE_TOPIC_KEY_TOPIC);
-        requestHeader.setDefaultTopicQueueNums(3);
-        requestHeader.setQueueId(1);
-        requestHeader.setSysFlag(0);
-        requestHeader.setBornTimestamp(System.currentTimeMillis());
-        requestHeader.setFlag(124);
-        requestHeader.setReconsumeTimes(0);
-        return requestHeader;
-    }
-
-    private RemotingCommand createSendMsgCommand(int requestCode) {
-        SendMessageRequestHeader requestHeader = createSendMsgRequestHeader();
-
-        RemotingCommand request = RemotingCommand.createRequestCommand(requestCode, requestHeader);
-        request.setBody(new byte[] {'a'});
-        request.makeCustomHeaderToNet();
-        return request;
-    }
-
-    private RemotingCommand createSendMsgBackCommand(int requestCode) {
-        ConsumerSendMsgBackRequestHeader requestHeader = new ConsumerSendMsgBackRequestHeader();
-
-        requestHeader.setMaxReconsumeTimes(3);
-        requestHeader.setDelayLevel(4);
-        requestHeader.setGroup(group);
-        requestHeader.setOffset(123L);
-
-        RemotingCommand request = RemotingCommand.createRequestCommand(requestCode, requestHeader);
-        request.makeCustomHeaderToNet();
-        return request;
-    }
-
-    private void assertPutResult(int responseCode) throws RemotingCommandException {
-        final RemotingCommand request = createSendMsgCommand(RequestCode.SEND_MESSAGE);
-        final RemotingCommand[] response = new RemotingCommand[1];
-        doAnswer(new Answer() {
-            @Override
-            public Object answer(InvocationOnMock invocation) throws Throwable {
-                response[0] = invocation.getArgument(0);
-                return null;
-            }
-        }).when(handlerContext).writeAndFlush(any(Object.class));
-        RemotingCommand responseToReturn = sendMessageProcessor.processRequest(handlerContext, request);
-        if (responseToReturn != null) {
-            assertThat(response[0]).isNull();
-            response[0] = responseToReturn;
-        }
-        assertThat(response[0].getCode()).isEqualTo(responseCode);
-        assertThat(response[0].getOpaque()).isEqualTo(request.getOpaque());
     }
 }

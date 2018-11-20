@@ -17,15 +17,6 @@
 
 package org.apache.rocketmq.tools.monitor;
 
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map.Entry;
-import java.util.Random;
-import java.util.TreeMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import org.apache.rocketmq.client.consumer.DefaultMQPullConsumer;
 import org.apache.rocketmq.client.consumer.DefaultMQPushConsumer;
 import org.apache.rocketmq.client.consumer.PullResult;
@@ -40,7 +31,6 @@ import org.apache.rocketmq.common.MixAll;
 import org.apache.rocketmq.common.ThreadFactoryImpl;
 import org.apache.rocketmq.common.admin.ConsumeStats;
 import org.apache.rocketmq.common.admin.OffsetWrapper;
-import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.common.message.MessageExt;
 import org.apache.rocketmq.common.message.MessageQueue;
 import org.apache.rocketmq.common.protocol.body.Connection;
@@ -48,14 +38,21 @@ import org.apache.rocketmq.common.protocol.body.ConsumerConnection;
 import org.apache.rocketmq.common.protocol.body.ConsumerRunningInfo;
 import org.apache.rocketmq.common.protocol.body.TopicList;
 import org.apache.rocketmq.common.protocol.topic.OffsetMovedEvent;
+import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.remoting.RPCHook;
 import org.apache.rocketmq.remoting.exception.RemotingException;
 import org.apache.rocketmq.tools.admin.DefaultMQAdminExt;
 
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
 public class MonitorService {
     private final InternalLogger log = ClientLogger.getLog();
     private final ScheduledExecutorService scheduledExecutorService = Executors
-        .newSingleThreadScheduledExecutor(new ThreadFactoryImpl("MonitorService"));
+            .newSingleThreadScheduledExecutor(new ThreadFactoryImpl("MonitorService"));
 
     private final MonitorConfig monitorConfig;
 
@@ -63,9 +60,9 @@ public class MonitorService {
 
     private final DefaultMQAdminExt defaultMQAdminExt;
     private final DefaultMQPullConsumer defaultMQPullConsumer = new DefaultMQPullConsumer(
-        MixAll.TOOLS_CONSUMER_GROUP);
+            MixAll.TOOLS_CONSUMER_GROUP);
     private final DefaultMQPushConsumer defaultMQPushConsumer = new DefaultMQPushConsumer(
-        MixAll.MONITOR_CONSUMER_GROUP);
+            MixAll.MONITOR_CONSUMER_GROUP);
 
     public MonitorService(MonitorConfig monitorConfig, MonitorListener monitorListener, RPCHook rpcHook) {
         this.monitorConfig = monitorConfig;
@@ -88,10 +85,10 @@ public class MonitorService {
 
                 @Override
                 public ConsumeConcurrentlyStatus consumeMessage(List<MessageExt> msgs,
-                    ConsumeConcurrentlyContext context) {
+                                                                ConsumeConcurrentlyContext context) {
                     try {
                         OffsetMovedEvent ome =
-                            OffsetMovedEvent.decode(msgs.get(0).getBody(), OffsetMovedEvent.class);
+                                OffsetMovedEvent.decode(msgs.get(0).getBody(), OffsetMovedEvent.class);
 
                         DeleteMsgsEvent deleteMsgsEvent = new DeleteMsgsEvent();
                         deleteMsgsEvent.setOffsetMovedEvent(ome);
@@ -108,13 +105,20 @@ public class MonitorService {
         }
     }
 
+    private String instanceName() {
+        String name =
+                System.currentTimeMillis() + new Random().nextInt() + this.monitorConfig.getNamesrvAddr();
+
+        return "MonitorService_" + name.hashCode();
+    }
+
     public static void main(String[] args) throws MQClientException {
         main0(args, null);
     }
 
     public static void main0(String[] args, RPCHook rpcHook) throws MQClientException {
         final MonitorService monitorService =
-            new MonitorService(new MonitorConfig(), new DefaultMonitorListener(), rpcHook);
+                new MonitorService(new MonitorConfig(), new DefaultMonitorListener(), rpcHook);
         monitorService.start();
 
         Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
@@ -130,13 +134,6 @@ public class MonitorService {
                 }
             }
         }, "ShutdownHook"));
-    }
-
-    private String instanceName() {
-        String name =
-            System.currentTimeMillis() + new Random().nextInt() + this.monitorConfig.getNamesrvAddr();
-
-        return "MonitorService_" + name.hashCode();
     }
 
     public void start() throws MQClientException {
@@ -242,7 +239,7 @@ public class MonitorService {
     }
 
     public void reportConsumerRunningInfo(final String consumerGroup) throws InterruptedException,
-        MQBrokerException, RemotingException, MQClientException {
+            MQBrokerException, RemotingException, MQClientException {
         ConsumerConnection cc = defaultMQAdminExt.examineConsumerConnectionInfo(consumerGroup);
         TreeMap<String, ConsumerRunningInfo> infoMap = new TreeMap<String, ConsumerRunningInfo>();
         for (Connection c : cc.getConnectionSet()) {
@@ -254,7 +251,7 @@ public class MonitorService {
 
             try {
                 ConsumerRunningInfo info =
-                    defaultMQAdminExt.getConsumerRunningInfo(consumerGroup, clientId, false);
+                        defaultMQAdminExt.getConsumerRunningInfo(consumerGroup, clientId, false);
                 infoMap.put(clientId, info);
             } catch (Exception e) {
             }
@@ -293,7 +290,7 @@ public class MonitorService {
                         switch (pull.getPullStatus()) {
                             case FOUND:
                                 long delay =
-                                    pull.getMsgFoundList().get(0).getStoreTimestamp() - ow.getLastTimestamp();
+                                        pull.getMsgFoundList().get(0).getStoreTimestamp() - ow.getLastTimestamp();
                                 if (delay > delayMax) {
                                     delayMax = delay;
                                 }

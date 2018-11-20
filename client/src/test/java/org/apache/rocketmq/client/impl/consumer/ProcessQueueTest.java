@@ -16,14 +16,15 @@
  */
 package org.apache.rocketmq.client.impl.consumer;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import org.apache.rocketmq.common.message.MessageExt;
 import org.apache.rocketmq.common.protocol.body.ProcessQueueInfo;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnitRunner;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -45,6 +46,21 @@ public class ProcessQueueTest {
 
         pq.removeMessage(Collections.singletonList(pq.getMsgTreeMap().lastEntry().getValue()));
         assertThat(pq.getMsgCount().get()).isEqualTo(89);
+    }
+
+    private List<MessageExt> createMessageList() {
+        return createMessageList(100);
+    }
+
+    private List<MessageExt> createMessageList(int count) {
+        List<MessageExt> messageExtList = new ArrayList<MessageExt>();
+        for (int i = 0; i < count; i++) {
+            MessageExt messageExt = new MessageExt();
+            messageExt.setQueueOffset(i);
+            messageExt.setBody(new byte[123]);
+            messageExtList.add(messageExt);
+        }
+        return messageExtList;
     }
 
     @Test
@@ -88,20 +104,5 @@ public class ProcessQueueTest {
         pq.commit();
         pq.fillProcessQueueInfo(processQueueInfo);
         assertThat(processQueueInfo.getCachedMsgSizeInMiB()).isEqualTo(0);
-    }
-
-    private List<MessageExt> createMessageList() {
-        return createMessageList(100);
-    }
-
-    private List<MessageExt> createMessageList(int count) {
-        List<MessageExt> messageExtList = new ArrayList<MessageExt>();
-        for (int i = 0; i < count; i++) {
-            MessageExt messageExt = new MessageExt();
-            messageExt.setQueueOffset(i);
-            messageExt.setBody(new byte[123]);
-            messageExtList.add(messageExt);
-        }
-        return messageExtList;
     }
 }

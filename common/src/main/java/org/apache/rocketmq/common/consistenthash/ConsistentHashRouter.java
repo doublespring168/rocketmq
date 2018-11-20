@@ -37,8 +37,8 @@ public class ConsistentHashRouter<T extends Node> {
     }
 
     /**
-     * @param pNodes collections of physical nodes
-     * @param vNodeCount amounts of virtual nodes
+     * @param pNodes       collections of physical nodes
+     * @param vNodeCount   amounts of virtual nodes
      * @param hashFunction hash Function to hash Node instances
      */
     public ConsistentHashRouter(Collection<T> pNodes, int vNodeCount, HashFunction hashFunction) {
@@ -56,7 +56,7 @@ public class ConsistentHashRouter<T extends Node> {
     /**
      * add physic node to the hash ring with some virtual nodes
      *
-     * @param pNode physical node needs added to hash ring
+     * @param pNode      physical node needs added to hash ring
      * @param vNodeCount the number of virtual node of the physical node. Value should be greater than or equals to 0
      */
     public void addNode(T pNode, int vNodeCount) {
@@ -67,6 +67,16 @@ public class ConsistentHashRouter<T extends Node> {
             VirtualNode<T> vNode = new VirtualNode<T>(pNode, i + existingReplicas);
             ring.put(hashFunction.hash(vNode.getKey()), vNode);
         }
+    }
+
+    public int getExistingReplicas(T pNode) {
+        int replicas = 0;
+        for (VirtualNode<T> vNode : ring.values()) {
+            if (vNode.isVirtualNodeOf(pNode)) {
+                replicas++;
+            }
+        }
+        return replicas;
     }
 
     /**
@@ -96,16 +106,6 @@ public class ConsistentHashRouter<T extends Node> {
         SortedMap<Long, VirtualNode<T>> tailMap = ring.tailMap(hashVal);
         Long nodeHashVal = !tailMap.isEmpty() ? tailMap.firstKey() : ring.firstKey();
         return ring.get(nodeHashVal).getPhysicalNode();
-    }
-
-    public int getExistingReplicas(T pNode) {
-        int replicas = 0;
-        for (VirtualNode<T> vNode : ring.values()) {
-            if (vNode.isVirtualNodeOf(pNode)) {
-                replicas++;
-            }
-        }
-        return replicas;
     }
 
     //default hash function

@@ -71,16 +71,6 @@ public class SendMessageCommand implements SubCommand {
         return options;
     }
 
-    private DefaultMQProducer createProducer(RPCHook rpcHook) {
-        if (this.producer != null) {
-            return producer;
-        } else {
-            producer = new DefaultMQProducer(rpcHook);
-            producer.setProducerGroup(Long.toString(System.currentTimeMillis()));
-            return producer;
-        }
-    }
-
     @Override
     public void execute(CommandLine commandLine, Options options, RPCHook rpcHook) throws SubCommandException {
         Message msg = null;
@@ -131,26 +121,36 @@ public class SendMessageCommand implements SubCommand {
         }
 
         System.out.printf("%-32s  %-4s  %-20s    %s%n",
-            "#Broker Name",
-            "#QID",
-            "#Send Result",
-            "#MsgId"
+                "#Broker Name",
+                "#QID",
+                "#Send Result",
+                "#MsgId"
         );
 
         if (result != null) {
             System.out.printf("%-32s  %-4s  %-20s    %s%n",
-                result.getMessageQueue().getBrokerName(),
-                result.getMessageQueue().getQueueId(),
-                result.getSendStatus(),
-                result.getMsgId()
+                    result.getMessageQueue().getBrokerName(),
+                    result.getMessageQueue().getQueueId(),
+                    result.getSendStatus(),
+                    result.getMsgId()
             );
         } else {
             System.out.printf("%-32s  %-4s  %-20s    %s%n",
-                "Unknown",
-                "Unknown",
-                "Failed",
-                "None"
+                    "Unknown",
+                    "Unknown",
+                    "Failed",
+                    "None"
             );
+        }
+    }
+
+    private DefaultMQProducer createProducer(RPCHook rpcHook) {
+        if (this.producer != null) {
+            return producer;
+        } else {
+            producer = new DefaultMQProducer(rpcHook);
+            producer.setProducerGroup(Long.toString(System.currentTimeMillis()));
+            return producer;
         }
     }
 }

@@ -36,38 +36,29 @@ public class ConsumeQueueExtTest {
     private static final int cqExtFileSize = 10 * unitSizeWithBitMap;
     private static final int unitCount = 20;
 
+    @Test
+    public void testPut() {
+        ConsumeQueueExt consumeQueueExt = genExt();
+
+        try {
+            putSth(consumeQueueExt, true, false, unitCount);
+        } finally {
+            consumeQueueExt.destroy();
+            UtilAll.deleteFile(new File(storePath));
+        }
+    }
+
     protected ConsumeQueueExt genExt() {
         return new ConsumeQueueExt(
-            topic, queueId, storePath, cqExtFileSize, bitMapLength
+                topic, queueId, storePath, cqExtFileSize, bitMapLength
         );
     }
 
-    protected byte[] genBitMap(int bitMapLength) {
-        byte[] bytes = new byte[bitMapLength / Byte.SIZE];
-
-        Random random = new Random(System.currentTimeMillis());
-        random.nextBytes(bytes);
-
-        return bytes;
-    }
-
-    protected ConsumeQueueExt.CqExtUnit genUnit(boolean hasBitMap) {
-        ConsumeQueueExt.CqExtUnit cqExtUnit = new ConsumeQueueExt.CqExtUnit();
-
-        cqExtUnit.setTagsCode(Math.abs((new Random(System.currentTimeMillis())).nextInt()));
-        cqExtUnit.setMsgStoreTime(System.currentTimeMillis());
-        if (hasBitMap) {
-            cqExtUnit.setFilterBitMap(genBitMap(bitMapLength));
-        }
-
-        return cqExtUnit;
-    }
-
     protected void putSth(ConsumeQueueExt consumeQueueExt, boolean getAfterPut,
-        boolean unitSameSize, int unitCount) {
+                          boolean unitSameSize, int unitCount) {
         for (int i = 0; i < unitCount; i++) {
             ConsumeQueueExt.CqExtUnit putUnit =
-                unitSameSize ? genUnit(true) : genUnit(i % 2 == 0);
+                    unitSameSize ? genUnit(true) : genUnit(i % 2 == 0);
 
             long addr = consumeQueueExt.put(putUnit);
             assertThat(addr).isLessThan(0);
@@ -88,16 +79,25 @@ public class ConsumeQueueExtTest {
         }
     }
 
-    @Test
-    public void testPut() {
-        ConsumeQueueExt consumeQueueExt = genExt();
+    protected ConsumeQueueExt.CqExtUnit genUnit(boolean hasBitMap) {
+        ConsumeQueueExt.CqExtUnit cqExtUnit = new ConsumeQueueExt.CqExtUnit();
 
-        try {
-            putSth(consumeQueueExt, true, false, unitCount);
-        } finally {
-            consumeQueueExt.destroy();
-            UtilAll.deleteFile(new File(storePath));
+        cqExtUnit.setTagsCode(Math.abs((new Random(System.currentTimeMillis())).nextInt()));
+        cqExtUnit.setMsgStoreTime(System.currentTimeMillis());
+        if (hasBitMap) {
+            cqExtUnit.setFilterBitMap(genBitMap(bitMapLength));
         }
+
+        return cqExtUnit;
+    }
+
+    protected byte[] genBitMap(int bitMapLength) {
+        byte[] bytes = new byte[bitMapLength / Byte.SIZE];
+
+        Random random = new Random(System.currentTimeMillis());
+        random.nextBytes(bytes);
+
+        return bytes;
     }
 
     @Test
@@ -179,7 +179,7 @@ public class ConsumeQueueExtTest {
                 assertThat(loadCqExt.unDecorate(loadCqExt.getMaxAddress()) % cqExtFileSize).isEqualTo(0);
             } else {
                 assertThat(loadCqExt.unDecorate(loadCqExt.getMaxAddress()))
-                    .isEqualTo(lastFileUnitCount * unitSizeWithBitMap + (fileCount - 1) * cqExtFileSize);
+                        .isEqualTo(lastFileUnitCount * unitSizeWithBitMap + (fileCount - 1) * cqExtFileSize);
             }
         } finally {
             putCqExt.destroy();

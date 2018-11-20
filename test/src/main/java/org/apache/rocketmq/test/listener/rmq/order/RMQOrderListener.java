@@ -17,16 +17,17 @@
 
 package org.apache.rocketmq.test.listener.rmq.order;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import org.apache.rocketmq.client.consumer.listener.ConsumeOrderlyContext;
 import org.apache.rocketmq.client.consumer.listener.ConsumeOrderlyStatus;
 import org.apache.rocketmq.client.consumer.listener.MessageListenerOrderly;
 import org.apache.rocketmq.common.message.MessageExt;
 import org.apache.rocketmq.test.listener.AbstractListener;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class RMQOrderListener extends AbstractListener implements MessageListenerOrderly {
     private Map<String/* brokerId_brokerIp */, Collection<Object>> msgs = new ConcurrentHashMap<String, Collection<Object>>();
@@ -47,25 +48,8 @@ public class RMQOrderListener extends AbstractListener implements MessageListene
         return msgs.values();
     }
 
-    private void putMsg(MessageExt msg) {
-        Collection<Object> msgQueue = null;
-        String key = getKey(msg.getQueueId(), msg.getStoreHost().toString());
-        if (!msgs.containsKey(key)) {
-            msgQueue = new ArrayList<Object>();
-        } else {
-            msgQueue = msgs.get(key);
-        }
-
-        msgQueue.add(new String(msg.getBody()));
-        msgs.put(key, msgQueue);
-    }
-
-    private String getKey(int queueId, String brokerIp) {
-        return String.format("%s_%s", queueId, brokerIp);
-    }
-
     public ConsumeOrderlyStatus consumeMessage(List<MessageExt> msgs,
-        ConsumeOrderlyContext context) {
+                                               ConsumeOrderlyContext context) {
         for (MessageExt msg : msgs) {
             if (isDebug) {
                 if (listenerName != null && listenerName != "") {
@@ -81,5 +65,22 @@ public class RMQOrderListener extends AbstractListener implements MessageListene
         }
 
         return ConsumeOrderlyStatus.SUCCESS;
+    }
+
+    private void putMsg(MessageExt msg) {
+        Collection<Object> msgQueue = null;
+        String key = getKey(msg.getQueueId(), msg.getStoreHost().toString());
+        if (!msgs.containsKey(key)) {
+            msgQueue = new ArrayList<Object>();
+        } else {
+            msgQueue = msgs.get(key);
+        }
+
+        msgQueue.add(new String(msg.getBody()));
+        msgs.put(key, msgQueue);
+    }
+
+    private String getKey(int queueId, String brokerIp) {
+        return String.format("%s_%s", queueId, brokerIp);
     }
 }

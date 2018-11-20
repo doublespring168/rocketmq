@@ -52,14 +52,6 @@ public class Message implements Serializable {
         this.setWaitStoreMsgOK(waitStoreMsgOK);
     }
 
-    public Message(String topic, String tags, byte[] body) {
-        this(topic, tags, "", 0, body, true);
-    }
-
-    public Message(String topic, String tags, String keys, byte[] body) {
-        this(topic, tags, keys, 0, body, true);
-    }
-
     public void setKeys(String keys) {
         this.putProperty(MessageConst.PROPERTY_KEYS, keys);
     }
@@ -72,6 +64,14 @@ public class Message implements Serializable {
         this.properties.put(name, value);
     }
 
+    public Message(String topic, String tags, byte[] body) {
+        this(topic, tags, "", 0, body, true);
+    }
+
+    public Message(String topic, String tags, String keys, byte[] body) {
+        this(topic, tags, keys, 0, body, true);
+    }
+
     void clearProperty(final String name) {
         if (null != this.properties) {
             this.properties.remove(name);
@@ -81,13 +81,13 @@ public class Message implements Serializable {
     public void putUserProperty(final String name, final String value) {
         if (MessageConst.STRING_HASH_SET.contains(name)) {
             throw new RuntimeException(String.format(
-                "The Property<%s> is used by system, input another please", name));
+                    "The Property<%s> is used by system, input another please", name));
         }
 
         if (value == null || value.trim().isEmpty()
-            || name == null || name.trim().isEmpty()) {
+                || name == null || name.trim().isEmpty()) {
             throw new IllegalArgumentException(
-                "The name or value of property can not be null or blank string!"
+                    "The name or value of property can not be null or blank string!"
             );
         }
 
@@ -204,11 +204,11 @@ public class Message implements Serializable {
     @Override
     public String toString() {
         return "Message{" +
-            "topic='" + topic + '\'' +
-            ", flag=" + flag +
-            ", properties=" + properties +
-            ", body=" + Arrays.toString(body) +
-            ", transactionId='" + transactionId + '\'' +
-            '}';
+                "topic='" + topic + '\'' +
+                ", flag=" + flag +
+                ", properties=" + properties +
+                ", body=" + Arrays.toString(body) +
+                ", transactionId='" + transactionId + '\'' +
+                '}';
     }
 }

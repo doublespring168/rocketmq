@@ -16,7 +16,6 @@
  */
 package org.apache.rocketmq.remoting.netty;
 
-import java.util.concurrent.Semaphore;
 import org.apache.rocketmq.remoting.InvokeCallback;
 import org.apache.rocketmq.remoting.common.SemaphoreReleaseOnlyOnce;
 import org.apache.rocketmq.remoting.protocol.RemotingCommand;
@@ -24,6 +23,8 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Spy;
 import org.mockito.junit.MockitoJUnitRunner;
+
+import java.util.concurrent.Semaphore;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
@@ -36,7 +37,7 @@ public class NettyRemotingAbstractTest {
     @Test
     public void testProcessResponseCommand() throws InterruptedException {
         final Semaphore semaphore = new Semaphore(0);
-        ResponseFuture responseFuture = new ResponseFuture(null,1, 3000, new InvokeCallback() {
+        ResponseFuture responseFuture = new ResponseFuture(null, 1, 3000, new InvokeCallback() {
             @Override
             public void operationComplete(final ResponseFuture responseFuture) {
                 assertThat(semaphore.availablePermits()).isEqualTo(0);
@@ -57,8 +58,8 @@ public class NettyRemotingAbstractTest {
     @Test
     public void testProcessResponseCommand_NullCallBack() throws InterruptedException {
         final Semaphore semaphore = new Semaphore(0);
-        ResponseFuture responseFuture = new ResponseFuture(null,1, 3000, null,
-            new SemaphoreReleaseOnlyOnce(semaphore));
+        ResponseFuture responseFuture = new ResponseFuture(null, 1, 3000, null,
+                new SemaphoreReleaseOnlyOnce(semaphore));
 
         remotingAbstract.responseTable.putIfAbsent(1, responseFuture);
 
@@ -72,7 +73,7 @@ public class NettyRemotingAbstractTest {
     @Test
     public void testProcessResponseCommand_RunCallBackInCurrentThread() throws InterruptedException {
         final Semaphore semaphore = new Semaphore(0);
-        ResponseFuture responseFuture = new ResponseFuture(null,1, 3000, new InvokeCallback() {
+        ResponseFuture responseFuture = new ResponseFuture(null, 1, 3000, new InvokeCallback() {
             @Override
             public void operationComplete(final ResponseFuture responseFuture) {
                 assertThat(semaphore.availablePermits()).isEqualTo(0);

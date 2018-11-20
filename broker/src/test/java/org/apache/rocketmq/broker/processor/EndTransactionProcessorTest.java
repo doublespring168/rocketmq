@@ -32,12 +32,7 @@ import org.apache.rocketmq.remoting.exception.RemotingCommandException;
 import org.apache.rocketmq.remoting.netty.NettyClientConfig;
 import org.apache.rocketmq.remoting.netty.NettyServerConfig;
 import org.apache.rocketmq.remoting.protocol.RemotingCommand;
-import org.apache.rocketmq.store.AppendMessageResult;
-import org.apache.rocketmq.store.AppendMessageStatus;
-import org.apache.rocketmq.store.MessageExtBrokerInner;
-import org.apache.rocketmq.store.MessageStore;
-import org.apache.rocketmq.store.PutMessageResult;
-import org.apache.rocketmq.store.PutMessageStatus;
+import org.apache.rocketmq.store.*;
 import org.apache.rocketmq.store.config.MessageStoreConfig;
 import org.junit.Before;
 import org.junit.Test;
@@ -60,8 +55,8 @@ public class EndTransactionProcessorTest {
 
     @Spy
     private BrokerController
-        brokerController = new BrokerController(new BrokerConfig(), new NettyServerConfig(), new NettyClientConfig(),
-        new MessageStoreConfig());
+            brokerController = new BrokerController(new BrokerConfig(), new NettyServerConfig(), new NettyClientConfig(),
+            new MessageStoreConfig());
 
     @Mock
     private MessageStore messageStore;
@@ -76,7 +71,17 @@ public class EndTransactionProcessorTest {
         endTransactionProcessor = new EndTransactionProcessor(brokerController);
     }
 
-    private OperationResult createResponse(int status){
+    @Test
+    public void testProcessRequest() throws RemotingCommandException {
+        when(transactionMsgService.commitMessage(any(EndTransactionRequestHeader.class))).thenReturn(createResponse(ResponseCode.SUCCESS));
+        when(messageStore.putMessage(any(MessageExtBrokerInner.class))).thenReturn(new PutMessageResult
+                (PutMessageStatus.PUT_OK, new AppendMessageResult(AppendMessageStatus.PUT_OK)));
+        RemotingCommand request = createEndTransactionMsgCommand(MessageSysFlag.TRANSACTION_COMMIT_TYPE, false);
+        RemotingCommand response = endTransactionProcessor.processRequest(handlerContext, request);
+        assertThat(response.getCode()).isEqualTo(ResponseCode.SUCCESS);
+    }
+
+    private OperationResult createResponse(int status) {
         OperationResult response = new OperationResult();
         response.setPrepareMessage(createDefaultMessageExt());
         response.setResponseCode(status);
@@ -84,39 +89,11 @@ public class EndTransactionProcessorTest {
         return response;
     }
 
-    @Test
-    public void testProcessRequest() throws RemotingCommandException {
-        when(transactionMsgService.commitMessage(any(EndTransactionRequestHeader.class))).thenReturn(createResponse(ResponseCode.SUCCESS));
-        when(messageStore.putMessage(any(MessageExtBrokerInner.class))).thenReturn(new PutMessageResult
-            (PutMessageStatus.PUT_OK, new AppendMessageResult(AppendMessageStatus.PUT_OK)));
-        RemotingCommand request = createEndTransactionMsgCommand(MessageSysFlag.TRANSACTION_COMMIT_TYPE, false);
-        RemotingCommand response = endTransactionProcessor.processRequest(handlerContext, request);
-        assertThat(response.getCode()).isEqualTo(ResponseCode.SUCCESS);
-    }
-
-    @Test
-    public void testProcessRequest_CheckMessage() throws RemotingCommandException {
-        when(transactionMsgService.commitMessage(any(EndTransactionRequestHeader.class))).thenReturn(createResponse(ResponseCode.SUCCESS));
-        when(messageStore.putMessage(any(MessageExtBrokerInner.class))).thenReturn(new PutMessageResult
-            (PutMessageStatus.PUT_OK, new AppendMessageResult(AppendMessageStatus.PUT_OK)));
-        RemotingCommand request = createEndTransactionMsgCommand(MessageSysFlag.TRANSACTION_COMMIT_TYPE, true);
-        RemotingCommand response = endTransactionProcessor.processRequest(handlerContext, request);
-        assertThat(response.getCode()).isEqualTo(ResponseCode.SUCCESS);
-    }
-
-    @Test
-    public void testProcessRequest_NotType() throws RemotingCommandException {
-        RemotingCommand request = createEndTransactionMsgCommand(MessageSysFlag.TRANSACTION_NOT_TYPE, true);
-        RemotingCommand response = endTransactionProcessor.processRequest(handlerContext, request);
-        assertThat(response).isNull();
-    }
-
-    @Test
-    public void testProcessRequest_RollBack() throws RemotingCommandException {
-        when(transactionMsgService.rollbackMessage(any(EndTransactionRequestHeader.class))).thenReturn(createResponse(ResponseCode.SUCCESS));
-        RemotingCommand request = createEndTransactionMsgCommand(MessageSysFlag.TRANSACTION_ROLLBACK_TYPE, true);
-        RemotingCommand response = endTransactionProcessor.processRequest(handlerContext, request);
-        assertThat(response.getCode()).isEqualTo(ResponseCode.SUCCESS);
+    private RemotingCommand createEndTransactionMsgCommand(int status, boolean isCheckMsg) {
+        EndTransactionRequestHeader header = createEndTransactionRequestHeader(status, isCheckMsg);
+        RemotingCommand request = RemotingCommand.createRequestCommand(RequestCode.END_TRANSACTION, header);
+        request.makeCustomHeaderToNet();
+        return request;
     }
 
     private MessageExt createDefaultMessageExt() {
@@ -143,10 +120,28 @@ public class EndTransactionProcessorTest {
         return header;
     }
 
-    private RemotingCommand createEndTransactionMsgCommand(int status, boolean isCheckMsg) {
-        EndTransactionRequestHeader header = createEndTransactionRequestHeader(status, isCheckMsg);
-        RemotingCommand request = RemotingCommand.createRequestCommand(RequestCode.END_TRANSACTION, header);
-        request.makeCustomHeaderToNet();
-        return request;
+    @Test
+    public void testProcessRequest_CheckMessage() throws RemotingCommandException {
+        when(transactionMsgService.commitMessage(any(EndTransactionRequestHeader.class))).thenReturn(createResponse(ResponseCode.SUCCESS));
+        when(messageStore.putMessage(any(MessageExtBrokerInner.class))).thenReturn(new PutMessageResult
+                (PutMessageStatus.PUT_OK, new AppendMessageResult(AppendMessageStatus.PUT_OK)));
+        RemotingCommand request = createEndTransactionMsgCommand(MessageSysFlag.TRANSACTION_COMMIT_TYPE, true);
+        RemotingCommand response = endTransactionProcessor.processRequest(handlerContext, request);
+        assertThat(response.getCode()).isEqualTo(ResponseCode.SUCCESS);
+    }
+
+    @Test
+    public void testProcessRequest_NotType() throws RemotingCommandException {
+        RemotingCommand request = createEndTransactionMsgCommand(MessageSysFlag.TRANSACTION_NOT_TYPE, true);
+        RemotingCommand response = endTransactionProcessor.processRequest(handlerContext, request);
+        assertThat(response).isNull();
+    }
+
+    @Test
+    public void testProcessRequest_RollBack() throws RemotingCommandException {
+        when(transactionMsgService.rollbackMessage(any(EndTransactionRequestHeader.class))).thenReturn(createResponse(ResponseCode.SUCCESS));
+        RemotingCommand request = createEndTransactionMsgCommand(MessageSysFlag.TRANSACTION_ROLLBACK_TYPE, true);
+        RemotingCommand response = endTransactionProcessor.processRequest(handlerContext, request);
+        assertThat(response.getCode()).isEqualTo(ResponseCode.SUCCESS);
     }
 }

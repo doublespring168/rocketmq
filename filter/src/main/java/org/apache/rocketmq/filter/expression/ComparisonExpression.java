@@ -57,221 +57,12 @@ public abstract class ComparisonExpression extends BinaryExpression implements B
                 int ret = __compare((Comparable) rv, (Comparable) lv, true);
                 if (ret < 0)
                     throw new RuntimeException(
-                        String.format("Illegal values of between, left value(%s) must less than or equal to right value(%s)", lv, rv)
+                            String.format("Illegal values of between, left value(%s) must less than or equal to right value(%s)", lv, rv)
                     );
             }
         }
 
         return LogicExpression.createAND(createGreaterThanEqual(value, left), createLessThanEqual(value, right));
-    }
-
-    public static BooleanExpression createNotBetween(Expression value, Expression left, Expression right) {
-        return LogicExpression.createOR(createLessThan(value, left), createGreaterThan(value, right));
-    }
-
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    public static BooleanExpression createInFilter(Expression left, List elements) {
-
-        if (!(left instanceof PropertyExpression)) {
-            throw new RuntimeException("Expected a property for In expression, got: " + left);
-        }
-        return UnaryExpression.createInExpression((PropertyExpression) left, elements, false);
-
-    }
-
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    public static BooleanExpression createNotInFilter(Expression left, List elements) {
-
-        if (!(left instanceof PropertyExpression)) {
-            throw new RuntimeException("Expected a property for In expression, got: " + left);
-        }
-        return UnaryExpression.createInExpression((PropertyExpression) left, elements, true);
-
-    }
-
-    public static BooleanExpression createIsNull(Expression left) {
-        return doCreateEqual(left, ConstantExpression.NULL);
-    }
-
-    public static BooleanExpression createIsNotNull(Expression left) {
-        return UnaryExpression.createNOT(doCreateEqual(left, ConstantExpression.NULL));
-    }
-
-    public static BooleanExpression createNotEqual(Expression left, Expression right) {
-        return UnaryExpression.createNOT(createEqual(left, right));
-    }
-
-    public static BooleanExpression createEqual(Expression left, Expression right) {
-        checkEqualOperand(left);
-        checkEqualOperand(right);
-        checkEqualOperandCompatability(left, right);
-        return doCreateEqual(left, right);
-    }
-
-    @SuppressWarnings({"rawtypes"})
-    private static BooleanExpression doCreateEqual(Expression left, Expression right) {
-        return new ComparisonExpression(left, right) {
-
-            public Object evaluate(EvaluationContext context) throws Exception {
-                Object lv = left.evaluate(context);
-                Object rv = right.evaluate(context);
-
-                // If one of the values is null
-                if (lv == null ^ rv == null) {
-                    if (lv == null) {
-                        return null;
-                    }
-                    return Boolean.FALSE;
-                }
-                if (lv == rv || lv.equals(rv)) {
-                    return Boolean.TRUE;
-                }
-                if (lv instanceof Comparable && rv instanceof Comparable) {
-                    return compare((Comparable) lv, (Comparable) rv);
-                }
-                return Boolean.FALSE;
-            }
-
-            protected boolean asBoolean(int answer) {
-                return answer == 0;
-            }
-
-            public String getExpressionSymbol() {
-                return "==";
-            }
-        };
-    }
-
-    public static BooleanExpression createGreaterThan(final Expression left, final Expression right) {
-        checkLessThanOperand(left);
-        checkLessThanOperand(right);
-        return new ComparisonExpression(left, right) {
-            protected boolean asBoolean(int answer) {
-                return answer > 0;
-            }
-
-            public String getExpressionSymbol() {
-                return ">";
-            }
-        };
-    }
-
-    public static BooleanExpression createGreaterThanEqual(final Expression left, final Expression right) {
-        checkLessThanOperand(left);
-        checkLessThanOperand(right);
-        return new ComparisonExpression(left, right) {
-            protected boolean asBoolean(int answer) {
-                return answer >= 0;
-            }
-
-            public String getExpressionSymbol() {
-                return ">=";
-            }
-        };
-    }
-
-    public static BooleanExpression createLessThan(final Expression left, final Expression right) {
-        checkLessThanOperand(left);
-        checkLessThanOperand(right);
-        return new ComparisonExpression(left, right) {
-
-            protected boolean asBoolean(int answer) {
-                return answer < 0;
-            }
-
-            public String getExpressionSymbol() {
-                return "<";
-            }
-
-        };
-    }
-
-    public static BooleanExpression createLessThanEqual(final Expression left, final Expression right) {
-        checkLessThanOperand(left);
-        checkLessThanOperand(right);
-        return new ComparisonExpression(left, right) {
-
-            protected boolean asBoolean(int answer) {
-                return answer <= 0;
-            }
-
-            public String getExpressionSymbol() {
-                return "<=";
-            }
-        };
-    }
-
-    /**
-     * Only Numeric expressions can be used in >, >=, < or <= expressions.s
-     */
-    public static void checkLessThanOperand(Expression expr) {
-        if (expr instanceof ConstantExpression) {
-            Object value = ((ConstantExpression) expr).getValue();
-            if (value instanceof Number) {
-                return;
-            }
-
-            // Else it's boolean or a String..
-            throw new RuntimeException("Value '" + expr + "' cannot be compared.");
-        }
-        if (expr instanceof BooleanExpression) {
-            throw new RuntimeException("Value '" + expr + "' cannot be compared.");
-        }
-    }
-
-    /**
-     * Validates that the expression can be used in == or <> expression. Cannot
-     * not be NULL TRUE or FALSE litterals.
-     */
-    public static void checkEqualOperand(Expression expr) {
-        if (expr instanceof ConstantExpression) {
-            Object value = ((ConstantExpression) expr).getValue();
-            if (value == null) {
-                throw new RuntimeException("'" + expr + "' cannot be compared.");
-            }
-        }
-    }
-
-    /**
-     * @param left
-     * @param right
-     */
-    private static void checkEqualOperandCompatability(Expression left, Expression right) {
-        if (left instanceof ConstantExpression && right instanceof ConstantExpression) {
-            if (left instanceof BooleanExpression && !(right instanceof BooleanExpression)) {
-                throw new RuntimeException("'" + left + "' cannot be compared with '" + right + "'");
-            }
-        }
-    }
-
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    public Object evaluate(EvaluationContext context) throws Exception {
-        Comparable<Comparable> lv = (Comparable) left.evaluate(context);
-        if (lv == null) {
-            return null;
-        }
-        Comparable rv = (Comparable) right.evaluate(context);
-        if (rv == null) {
-            return null;
-        }
-        if (getExpressionSymbol().equals(">=") || getExpressionSymbol().equals(">")
-            || getExpressionSymbol().equals("<") || getExpressionSymbol().equals("<=")) {
-            Class<? extends Comparable> lc = lv.getClass();
-            Class<? extends Comparable> rc = rv.getClass();
-            if (lc == rc && lc == String.class) {
-                // Compare String is illegal
-                // first try to convert to double
-                try {
-                    Comparable lvC = Double.valueOf((String) (Comparable) lv);
-                    Comparable rvC = Double.valueOf((String) rv);
-
-                    return compare(lvC, rvC);
-                } catch (Exception e) {
-                    throw new RuntimeException("It's illegal to compare string by '>=', '>', '<', '<='. lv=" + lv + ", rv=" + rv, e);
-                }
-            }
-        }
-        return compare(lv, rv);
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
@@ -394,6 +185,145 @@ public abstract class ComparisonExpression extends BinaryExpression implements B
         return lv.compareTo(rv);
     }
 
+    public static BooleanExpression createGreaterThanEqual(final Expression left, final Expression right) {
+        checkLessThanOperand(left);
+        checkLessThanOperand(right);
+        return new ComparisonExpression(left, right) {
+            protected boolean asBoolean(int answer) {
+                return answer >= 0;
+            }
+
+            public String getExpressionSymbol() {
+                return ">=";
+            }
+        };
+    }
+
+    public static BooleanExpression createLessThanEqual(final Expression left, final Expression right) {
+        checkLessThanOperand(left);
+        checkLessThanOperand(right);
+        return new ComparisonExpression(left, right) {
+
+            protected boolean asBoolean(int answer) {
+                return answer <= 0;
+            }
+
+            public String getExpressionSymbol() {
+                return "<=";
+            }
+        };
+    }
+
+    /**
+     * Only Numeric expressions can be used in >, >=, < or <= expressions.s
+     */
+    public static void checkLessThanOperand(Expression expr) {
+        if (expr instanceof ConstantExpression) {
+            Object value = ((ConstantExpression) expr).getValue();
+            if (value instanceof Number) {
+                return;
+            }
+
+            // Else it's boolean or a String..
+            throw new RuntimeException("Value '" + expr + "' cannot be compared.");
+        }
+        if (expr instanceof BooleanExpression) {
+            throw new RuntimeException("Value '" + expr + "' cannot be compared.");
+        }
+    }
+
+    public static BooleanExpression createNotBetween(Expression value, Expression left, Expression right) {
+        return LogicExpression.createOR(createLessThan(value, left), createGreaterThan(value, right));
+    }
+
+    public static BooleanExpression createLessThan(final Expression left, final Expression right) {
+        checkLessThanOperand(left);
+        checkLessThanOperand(right);
+        return new ComparisonExpression(left, right) {
+
+            protected boolean asBoolean(int answer) {
+                return answer < 0;
+            }
+
+            public String getExpressionSymbol() {
+                return "<";
+            }
+
+        };
+    }
+
+    public static BooleanExpression createGreaterThan(final Expression left, final Expression right) {
+        checkLessThanOperand(left);
+        checkLessThanOperand(right);
+        return new ComparisonExpression(left, right) {
+            protected boolean asBoolean(int answer) {
+                return answer > 0;
+            }
+
+            public String getExpressionSymbol() {
+                return ">";
+            }
+        };
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    public static BooleanExpression createInFilter(Expression left, List elements) {
+
+        if (!(left instanceof PropertyExpression)) {
+            throw new RuntimeException("Expected a property for In expression, got: " + left);
+        }
+        return UnaryExpression.createInExpression((PropertyExpression) left, elements, false);
+
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    public static BooleanExpression createNotInFilter(Expression left, List elements) {
+
+        if (!(left instanceof PropertyExpression)) {
+            throw new RuntimeException("Expected a property for In expression, got: " + left);
+        }
+        return UnaryExpression.createInExpression((PropertyExpression) left, elements, true);
+
+    }
+
+    public static BooleanExpression createIsNull(Expression left) {
+        return doCreateEqual(left, ConstantExpression.NULL);
+    }
+
+    @SuppressWarnings({"rawtypes"})
+    private static BooleanExpression doCreateEqual(Expression left, Expression right) {
+        return new ComparisonExpression(left, right) {
+
+            public Object evaluate(EvaluationContext context) throws Exception {
+                Object lv = left.evaluate(context);
+                Object rv = right.evaluate(context);
+
+                // If one of the values is null
+                if (lv == null ^ rv == null) {
+                    if (lv == null) {
+                        return null;
+                    }
+                    return Boolean.FALSE;
+                }
+                if (lv == rv || lv.equals(rv)) {
+                    return Boolean.TRUE;
+                }
+                if (lv instanceof Comparable && rv instanceof Comparable) {
+                    return compare((Comparable) lv, (Comparable) rv);
+                }
+                return Boolean.FALSE;
+            }
+
+            protected boolean asBoolean(int answer) {
+                return answer == 0;
+            }
+
+            public String getExpressionSymbol() {
+                return "==";
+            }
+        };
+    }
+
     @SuppressWarnings({"rawtypes", "unchecked"})
     protected Boolean compare(Comparable lv, Comparable rv) {
         return asBoolean(__compare(lv, rv, convertStringExpressions)) ? Boolean.TRUE : Boolean.FALSE;
@@ -401,9 +331,79 @@ public abstract class ComparisonExpression extends BinaryExpression implements B
 
     protected abstract boolean asBoolean(int answer);
 
+    public static BooleanExpression createIsNotNull(Expression left) {
+        return UnaryExpression.createNOT(doCreateEqual(left, ConstantExpression.NULL));
+    }
+
+    public static BooleanExpression createNotEqual(Expression left, Expression right) {
+        return UnaryExpression.createNOT(createEqual(left, right));
+    }
+
+    public static BooleanExpression createEqual(Expression left, Expression right) {
+        checkEqualOperand(left);
+        checkEqualOperand(right);
+        checkEqualOperandCompatability(left, right);
+        return doCreateEqual(left, right);
+    }
+
+    /**
+     * Validates that the expression can be used in == or <> expression. Cannot
+     * not be NULL TRUE or FALSE litterals.
+     */
+    public static void checkEqualOperand(Expression expr) {
+        if (expr instanceof ConstantExpression) {
+            Object value = ((ConstantExpression) expr).getValue();
+            if (value == null) {
+                throw new RuntimeException("'" + expr + "' cannot be compared.");
+            }
+        }
+    }
+
+    /**
+     * @param left
+     * @param right
+     */
+    private static void checkEqualOperandCompatability(Expression left, Expression right) {
+        if (left instanceof ConstantExpression && right instanceof ConstantExpression) {
+            if (left instanceof BooleanExpression && !(right instanceof BooleanExpression)) {
+                throw new RuntimeException("'" + left + "' cannot be compared with '" + right + "'");
+            }
+        }
+    }
+
     public boolean matches(EvaluationContext context) throws Exception {
         Object object = evaluate(context);
         return object != null && object == Boolean.TRUE;
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    public Object evaluate(EvaluationContext context) throws Exception {
+        Comparable<Comparable> lv = (Comparable) left.evaluate(context);
+        if (lv == null) {
+            return null;
+        }
+        Comparable rv = (Comparable) right.evaluate(context);
+        if (rv == null) {
+            return null;
+        }
+        if (getExpressionSymbol().equals(">=") || getExpressionSymbol().equals(">")
+                || getExpressionSymbol().equals("<") || getExpressionSymbol().equals("<=")) {
+            Class<? extends Comparable> lc = lv.getClass();
+            Class<? extends Comparable> rc = rv.getClass();
+            if (lc == rc && lc == String.class) {
+                // Compare String is illegal
+                // first try to convert to double
+                try {
+                    Comparable lvC = Double.valueOf((String) (Comparable) lv);
+                    Comparable rvC = Double.valueOf((String) rv);
+
+                    return compare(lvC, rvC);
+                } catch (Exception e) {
+                    throw new RuntimeException("It's illegal to compare string by '>=', '>', '<', '<='. lv=" + lv + ", rv=" + rv, e);
+                }
+            }
+        }
+        return compare(lv, rv);
     }
 
 }

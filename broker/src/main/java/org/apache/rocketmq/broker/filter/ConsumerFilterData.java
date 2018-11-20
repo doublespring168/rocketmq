@@ -41,10 +41,6 @@ public class ConsumerFilterData {
     private BloomFilterData bloomFilterData;
     private long clientVersion;
 
-    public boolean isDead() {
-        return this.deadTime >= this.bornTime;
-    }
-
     public long howLongAfterDeath() {
         if (isDead()) {
             return System.currentTimeMillis() - getDeadTime();
@@ -52,11 +48,31 @@ public class ConsumerFilterData {
         return -1;
     }
 
+    public boolean isDead() {
+        return this.deadTime >= this.bornTime;
+    }
+
+    public long getDeadTime() {
+        return deadTime;
+    }
+
+    public void setDeadTime(final long deadTime) {
+        this.deadTime = deadTime;
+    }
+
     /**
      * Check this filter data has been used to calculate bit map when msg was stored in server.
      */
     public boolean isMsgInLive(long msgStoreTime) {
         return msgStoreTime > getBornTime();
+    }
+
+    public long getBornTime() {
+        return bornTime;
+    }
+
+    public void setBornTime(final long bornTime) {
+        this.bornTime = bornTime;
     }
 
     public String getConsumerGroup() {
@@ -99,22 +115,6 @@ public class ConsumerFilterData {
         this.compiledExpression = compiledExpression;
     }
 
-    public long getBornTime() {
-        return bornTime;
-    }
-
-    public void setBornTime(final long bornTime) {
-        this.bornTime = bornTime;
-    }
-
-    public long getDeadTime() {
-        return deadTime;
-    }
-
-    public void setDeadTime(final long deadTime) {
-        this.deadTime = deadTime;
-    }
-
     public BloomFilterData getBloomFilterData() {
         return bloomFilterData;
     }
@@ -132,13 +132,13 @@ public class ConsumerFilterData {
     }
 
     @Override
-    public boolean equals(Object o) {
-        return EqualsBuilder.reflectionEquals(this, o, Collections.<String>emptyList());
+    public int hashCode() {
+        return HashCodeBuilder.reflectionHashCode(this, Collections.<String>emptyList());
     }
 
     @Override
-    public int hashCode() {
-        return HashCodeBuilder.reflectionHashCode(this, Collections.<String>emptyList());
+    public boolean equals(Object o) {
+        return EqualsBuilder.reflectionEquals(this, o, Collections.<String>emptyList());
     }
 
     @Override

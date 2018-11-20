@@ -26,8 +26,6 @@ public abstract class Log4jTest extends AbstractTestCase {
     @Before
     public abstract void init();
 
-    public abstract String getType();
-
     @Test
     public void testLog4j() {
         clear();
@@ -38,5 +36,7 @@ public abstract class Log4jTest extends AbstractTestCase {
         int received = consumeMessages(10, "log4j", 10);
         Assert.assertTrue(received > 5);
     }
+
+    public abstract String getType();
 
 }

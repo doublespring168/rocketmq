@@ -17,8 +17,6 @@
 
 package org.apache.rocketmq.test.base;
 
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.log4j.Logger;
 import org.apache.rocketmq.broker.BrokerController;
 import org.apache.rocketmq.namesrv.NamesrvController;
@@ -31,6 +29,9 @@ import org.apache.rocketmq.test.factory.ConsumerFactory;
 import org.apache.rocketmq.test.listener.AbstractListener;
 import org.apache.rocketmq.test.util.MQAdmin;
 import org.apache.rocketmq.test.util.MQRandomUtils;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class BaseConf {
     protected static String nsAddr;
@@ -69,16 +70,6 @@ public class BaseConf {
         return topic;
     }
 
-    public static String initConsumerGroup() {
-        String group = MQRandomUtils.getRandomConsumerGroup();
-        return initConsumerGroup(group);
-    }
-
-    public static String initConsumerGroup(String group) {
-        MQAdmin.createSub(nsAddr, clusterName, group);
-        return group;
-    }
-
     public static RMQNormalProducer getProducer(String nsAddr, String topic) {
         return getProducer(nsAddr, topic, false);
     }
@@ -93,9 +84,9 @@ public class BaseConf {
     }
 
     public static RMQNormalProducer getProducer(String nsAddr, String topic, String producerGoup,
-        String instanceName) {
+                                                String instanceName) {
         RMQNormalProducer producer = new RMQNormalProducer(nsAddr, topic, producerGoup,
-            instanceName);
+                instanceName);
         if (debug) {
             producer.setDebug();
         }
@@ -113,32 +104,42 @@ public class BaseConf {
     }
 
     public static RMQNormalConsumer getConsumer(String nsAddr, String topic, String subExpression,
-        AbstractListener listener) {
+                                                AbstractListener listener) {
         return getConsumer(nsAddr, topic, subExpression, listener, false);
     }
 
     public static RMQNormalConsumer getConsumer(String nsAddr, String topic, String subExpression,
-        AbstractListener listener, boolean useTLS) {
+                                                AbstractListener listener, boolean useTLS) {
         String consumerGroup = initConsumerGroup();
         return getConsumer(nsAddr, consumerGroup, topic, subExpression, listener, useTLS);
     }
 
-    public static RMQNormalConsumer getConsumer(String nsAddr, String consumerGroup, String topic,
-        String subExpression, AbstractListener listener) {
-        return getConsumer(nsAddr, consumerGroup, topic, subExpression, listener, false);
+    public static String initConsumerGroup() {
+        String group = MQRandomUtils.getRandomConsumerGroup();
+        return initConsumerGroup(group);
     }
 
     public static RMQNormalConsumer getConsumer(String nsAddr, String consumerGroup, String topic,
-        String subExpression, AbstractListener listener, boolean useTLS) {
+                                                String subExpression, AbstractListener listener, boolean useTLS) {
         RMQNormalConsumer consumer = ConsumerFactory.getRMQNormalConsumer(nsAddr, consumerGroup,
-            topic, subExpression, listener, useTLS);
+                topic, subExpression, listener, useTLS);
         if (debug) {
             consumer.setDebug();
         }
         mqClients.add(consumer);
         log.info(String.format("consumer[%s] start,topic[%s],subExpression[%s]", consumerGroup,
-            topic, subExpression));
+                topic, subExpression));
         return consumer;
+    }
+
+    public static String initConsumerGroup(String group) {
+        MQAdmin.createSub(nsAddr, clusterName, group);
+        return group;
+    }
+
+    public static RMQNormalConsumer getConsumer(String nsAddr, String consumerGroup, String topic,
+                                                String subExpression, AbstractListener listener) {
+        return getConsumer(nsAddr, consumerGroup, topic, subExpression, listener, false);
     }
 
     public static void shutdown() {

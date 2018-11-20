@@ -20,14 +20,15 @@
  */
 package org.apache.rocketmq.common.namesrv;
 
-import java.io.IOException;
 import org.apache.rocketmq.common.MixAll;
 import org.apache.rocketmq.common.UtilAll;
 import org.apache.rocketmq.common.constant.LoggerName;
 import org.apache.rocketmq.common.help.FAQUrl;
+import org.apache.rocketmq.common.utils.HttpTinyClient;
 import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.logging.InternalLoggerFactory;
-import org.apache.rocketmq.common.utils.HttpTinyClient;
+
+import java.io.IOException;
 
 public class TopAddressing {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.COMMON_LOGGER_NAME);
@@ -43,21 +44,6 @@ public class TopAddressing {
     public TopAddressing(final String wsAddr, final String unitName) {
         this.wsAddr = wsAddr;
         this.unitName = unitName;
-    }
-
-    private static String clearNewLine(final String str) {
-        String newString = str.trim();
-        int index = newString.indexOf("\r");
-        if (index != -1) {
-            return newString.substring(0, index);
-        }
-
-        index = newString.indexOf("\n");
-        if (index != -1) {
-            return newString.substring(0, index);
-        }
-
-        return newString;
     }
 
     public final String fetchNSAddr() {
@@ -89,12 +75,27 @@ public class TopAddressing {
 
         if (verbose) {
             String errorMsg =
-                "connect to " + url + " failed, maybe the domain name " + MixAll.getWSAddr() + " not bind in /etc/hosts";
+                    "connect to " + url + " failed, maybe the domain name " + MixAll.getWSAddr() + " not bind in /etc/hosts";
             errorMsg += FAQUrl.suggestTodo(FAQUrl.NAME_SERVER_ADDR_NOT_EXIST_URL);
 
             log.warn(errorMsg);
         }
         return null;
+    }
+
+    private static String clearNewLine(final String str) {
+        String newString = str.trim();
+        int index = newString.indexOf("\r");
+        if (index != -1) {
+            return newString.substring(0, index);
+        }
+
+        index = newString.indexOf("\n");
+        if (index != -1) {
+            return newString.substring(0, index);
+        }
+
+        return newString;
     }
 
     public String getNsAddr() {

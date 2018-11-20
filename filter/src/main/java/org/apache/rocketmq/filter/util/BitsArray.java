@@ -25,18 +25,6 @@ public class BitsArray implements Cloneable {
     private byte[] bytes;
     private int bitLength;
 
-    public static BitsArray create(int bitLength) {
-        return new BitsArray(bitLength);
-    }
-
-    public static BitsArray create(byte[] bytes, int bitLength) {
-        return new BitsArray(bytes, bitLength);
-    }
-
-    public static BitsArray create(byte[] bytes) {
-        return new BitsArray(bytes);
-    }
-
     private BitsArray(int bitLength) {
         this.bitLength = bitLength;
         // init bytes
@@ -78,16 +66,12 @@ public class BitsArray implements Cloneable {
         System.arraycopy(bytes, 0, this.bytes, 0, this.bytes.length);
     }
 
-    public int bitLength() {
-        return this.bitLength;
+    public static BitsArray create(int bitLength) {
+        return new BitsArray(bitLength);
     }
 
-    public int byteLength() {
-        return this.bytes.length;
-    }
-
-    public byte[] bytes() {
-        return this.bytes;
+    public static BitsArray create(byte[] bytes) {
+        return new BitsArray(bytes);
     }
 
     public void xor(final BitsArray other) {
@@ -98,6 +82,36 @@ public class BitsArray implements Cloneable {
 
         for (int i = 0; i < minByteLength; i++) {
             this.bytes[i] = (byte) (this.bytes[i] ^ other.getByte(i));
+        }
+    }
+
+    protected void checkInitialized(BitsArray bitsArray) {
+        if (bitsArray.bytes() == null) {
+            throw new RuntimeException("Not initialized!");
+        }
+    }
+
+    public int byteLength() {
+        return this.bytes.length;
+    }
+
+    public byte getByte(int bytePos) {
+        checkBytePosition(bytePos, this);
+
+        return this.bytes[bytePos];
+    }
+
+    public byte[] bytes() {
+        return this.bytes;
+    }
+
+    protected void checkBytePosition(int bytePos, BitsArray bitsArray) {
+        checkInitialized(bitsArray);
+        if (bytePos > bitsArray.byteLength()) {
+            throw new IllegalArgumentException("BytePos is greater than " + bytes.length);
+        }
+        if (bytePos < 0) {
+            throw new IllegalArgumentException("BytePos is less than 0");
         }
     }
 
@@ -179,28 +193,12 @@ public class BitsArray implements Cloneable {
         return (this.bytes[subscript(bitPos)] & position(bitPos)) != 0;
     }
 
-    public byte getByte(int bytePos) {
-        checkBytePosition(bytePos, this);
-
-        return this.bytes[bytePos];
-    }
-
     protected int subscript(int bitPos) {
         return bitPos / Byte.SIZE;
     }
 
     protected int position(int bitPos) {
         return 1 << bitPos % Byte.SIZE;
-    }
-
-    protected void checkBytePosition(int bytePos, BitsArray bitsArray) {
-        checkInitialized(bitsArray);
-        if (bytePos > bitsArray.byteLength()) {
-            throw new IllegalArgumentException("BytePos is greater than " + bytes.length);
-        }
-        if (bytePos < 0) {
-            throw new IllegalArgumentException("BytePos is less than 0");
-        }
     }
 
     protected void checkBitPosition(int bitPos, BitsArray bitsArray) {
@@ -213,18 +211,20 @@ public class BitsArray implements Cloneable {
         }
     }
 
-    protected void checkInitialized(BitsArray bitsArray) {
-        if (bitsArray.bytes() == null) {
-            throw new RuntimeException("Not initialized!");
-        }
-    }
-
     public BitsArray clone() {
         byte[] clone = new byte[this.byteLength()];
 
         System.arraycopy(this.bytes, 0, clone, 0, this.byteLength());
 
         return create(clone, bitLength());
+    }
+
+    public static BitsArray create(byte[] bytes, int bitLength) {
+        return new BitsArray(bytes, bitLength);
+    }
+
+    public int bitLength() {
+        return this.bitLength;
     }
 
     @Override

@@ -26,13 +26,16 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class TransactionalMessageCheckService extends ServiceThread {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.TRANSACTION_LOGGER_NAME);
-
-    private BrokerController brokerController;
-
     private final AtomicBoolean started = new AtomicBoolean(false);
+    private BrokerController brokerController;
 
     public TransactionalMessageCheckService(BrokerController brokerController) {
         this.brokerController = brokerController;
+    }
+
+    @Override
+    public String getServiceName() {
+        return TransactionalMessageCheckService.class.getSimpleName();
     }
 
     @Override
@@ -53,8 +56,13 @@ public class TransactionalMessageCheckService extends ServiceThread {
     }
 
     @Override
-    public String getServiceName() {
-        return TransactionalMessageCheckService.class.getSimpleName();
+    protected void onWaitEnd() {
+        long timeout = brokerController.getBrokerConfig().getTransactionTimeOut();
+        int checkMax = brokerController.getBrokerConfig().getTransactionCheckMax();
+        long begin = System.currentTimeMillis();
+        log.info("Begin to check prepare message, begin time:{}", begin);
+        this.brokerController.getTransactionalMessageService().check(timeout, checkMax, this.brokerController.getTransactionalMessageCheckListener());
+        log.info("End to check prepare message, consumed time:{}", System.currentTimeMillis() - begin);
     }
 
     @Override
@@ -65,16 +73,6 @@ public class TransactionalMessageCheckService extends ServiceThread {
             this.waitForRunning(checkInterval);
         }
         log.info("End transaction check service thread!");
-    }
-
-    @Override
-    protected void onWaitEnd() {
-        long timeout = brokerController.getBrokerConfig().getTransactionTimeOut();
-        int checkMax = brokerController.getBrokerConfig().getTransactionCheckMax();
-        long begin = System.currentTimeMillis();
-        log.info("Begin to check prepare message, begin time:{}", begin);
-        this.brokerController.getTransactionalMessageService().check(timeout, checkMax, this.brokerController.getTransactionalMessageCheckListener());
-        log.info("End to check prepare message, consumed time:{}", System.currentTimeMillis() - begin);
     }
 
 }

@@ -29,6 +29,11 @@ public class InnerLoggerFactory extends InternalLoggerFactory {
     }
 
     @Override
+    protected void shutdown() {
+        Logger.getRepository().shutdown();
+    }
+
+    @Override
     protected InternalLogger getLoggerInstance(String name) {
         return new InnerLogger(name);
     }
@@ -36,11 +41,6 @@ public class InnerLoggerFactory extends InternalLoggerFactory {
     @Override
     protected String getLoggerType() {
         return LOGGER_INNER;
-    }
-
-    @Override
-    protected void shutdown() {
-        Logger.getRepository().shutdown();
     }
 
     public static class InnerLogger implements InternalLogger {
@@ -62,41 +62,6 @@ public class InnerLoggerFactory extends InternalLoggerFactory {
         }
 
         @Override
-        public void debug(String var1, Throwable var2) {
-            logger.debug(var1, var2);
-        }
-
-        @Override
-        public void info(String var1) {
-            logger.info(var1);
-        }
-
-        @Override
-        public void info(String var1, Throwable var2) {
-            logger.info(var1, var2);
-        }
-
-        @Override
-        public void warn(String var1) {
-            logger.warn(var1);
-        }
-
-        @Override
-        public void warn(String var1, Throwable var2) {
-            logger.warn(var1, var2);
-        }
-
-        @Override
-        public void error(String var1) {
-            logger.error(var1);
-        }
-
-        @Override
-        public void error(String var1, Throwable var2) {
-            logger.error(var1, var2);
-        }
-
-        @Override
         public void debug(String var1, Object var2) {
             FormattingTuple format = MessageFormatter.format(var1, var2);
             logger.debug(format.getMessage(), format.getThrowable());
@@ -112,6 +77,16 @@ public class InnerLoggerFactory extends InternalLoggerFactory {
         public void debug(String var1, Object... var2) {
             FormattingTuple format = MessageFormatter.arrayFormat(var1, var2);
             logger.debug(format.getMessage(), format.getThrowable());
+        }
+
+        @Override
+        public void debug(String var1, Throwable var2) {
+            logger.debug(var1, var2);
+        }
+
+        @Override
+        public void info(String var1) {
+            logger.info(var1);
         }
 
         @Override
@@ -133,6 +108,16 @@ public class InnerLoggerFactory extends InternalLoggerFactory {
         }
 
         @Override
+        public void info(String var1, Throwable var2) {
+            logger.info(var1, var2);
+        }
+
+        @Override
+        public void warn(String var1) {
+            logger.warn(var1);
+        }
+
+        @Override
         public void warn(String var1, Object var2) {
             FormattingTuple format = MessageFormatter.format(var1, var2);
             logger.warn(format.getMessage(), format.getThrowable());
@@ -151,6 +136,16 @@ public class InnerLoggerFactory extends InternalLoggerFactory {
         }
 
         @Override
+        public void warn(String var1, Throwable var2) {
+            logger.warn(var1, var2);
+        }
+
+        @Override
+        public void error(String var1) {
+            logger.error(var1);
+        }
+
+        @Override
         public void error(String var1, Object var2) {
             FormattingTuple format = MessageFormatter.format(var1, var2);
             logger.warn(format.getMessage(), format.getThrowable());
@@ -166,6 +161,11 @@ public class InnerLoggerFactory extends InternalLoggerFactory {
         public void error(String var1, Object... var2) {
             FormattingTuple format = MessageFormatter.arrayFormat(var1, var2);
             logger.warn(format.getMessage(), format.getThrowable());
+        }
+
+        @Override
+        public void error(String var1, Throwable var2) {
+            logger.error(var1, var2);
         }
 
         public Logger getLogger() {

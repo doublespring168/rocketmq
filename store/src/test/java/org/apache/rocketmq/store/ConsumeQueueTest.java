@@ -17,6 +17,13 @@
 
 package org.apache.rocketmq.store;
 
+import org.apache.rocketmq.common.BrokerConfig;
+import org.apache.rocketmq.common.UtilAll;
+import org.apache.rocketmq.common.message.MessageDecoder;
+import org.apache.rocketmq.store.config.MessageStoreConfig;
+import org.apache.rocketmq.store.stats.BrokerStatsManager;
+import org.junit.Test;
+
 import java.io.File;
 import java.lang.reflect.Method;
 import java.net.InetAddress;
@@ -25,13 +32,8 @@ import java.net.SocketAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.Map;
-import org.apache.rocketmq.common.BrokerConfig;
-import org.apache.rocketmq.common.UtilAll;
-import org.apache.rocketmq.common.message.MessageDecoder;
-import org.apache.rocketmq.store.config.MessageStoreConfig;
-import org.apache.rocketmq.store.stats.BrokerStatsManager;
+
 import static org.assertj.core.api.Assertions.assertThat;
-import org.junit.Test;
 
 public class ConsumeQueueTest {
 
@@ -59,74 +61,6 @@ public class ConsumeQueueTest {
             BornHost = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0);
         } catch (UnknownHostException e) {
             e.printStackTrace();
-        }
-    }
-
-    public MessageExtBrokerInner buildMessage() {
-        MessageExtBrokerInner msg = new MessageExtBrokerInner();
-        msg.setTopic(topic);
-        msg.setTags("TAG1");
-        msg.setKeys("Hello");
-        msg.setBody(msgBody);
-        msg.setKeys(String.valueOf(System.currentTimeMillis()));
-        msg.setQueueId(queueId);
-        msg.setSysFlag(0);
-        msg.setBornTimestamp(System.currentTimeMillis());
-        msg.setStoreHost(StoreHost);
-        msg.setBornHost(BornHost);
-        for (int i = 0; i < 1; i++) {
-            msg.putUserProperty(String.valueOf(i), "imagoodperson" + i);
-        }
-        msg.setPropertiesString(MessageDecoder.messageProperties2String(msg.getProperties()));
-
-        return msg;
-    }
-
-    public MessageStoreConfig buildStoreConfig(int commitLogFileSize, int cqFileSize,
-        boolean enableCqExt, int cqExtFileSize) {
-        MessageStoreConfig messageStoreConfig = new MessageStoreConfig();
-        messageStoreConfig.setMapedFileSizeCommitLog(commitLogFileSize);
-        messageStoreConfig.setMapedFileSizeConsumeQueue(cqFileSize);
-        messageStoreConfig.setMappedFileSizeConsumeQueueExt(cqExtFileSize);
-        messageStoreConfig.setMessageIndexEnable(false);
-        messageStoreConfig.setEnableConsumeQueueExt(enableCqExt);
-
-        messageStoreConfig.setStorePathRootDir(storePath);
-        messageStoreConfig.setStorePathCommitLog(storePath + File.separator + "commitlog");
-
-        return messageStoreConfig;
-    }
-
-    protected DefaultMessageStore gen() throws Exception {
-        MessageStoreConfig messageStoreConfig = buildStoreConfig(
-            commitLogFileSize, cqFileSize, true, cqExtFileSize
-        );
-
-        BrokerConfig brokerConfig = new BrokerConfig();
-
-        DefaultMessageStore master = new DefaultMessageStore(
-            messageStoreConfig,
-            new BrokerStatsManager(brokerConfig.getBrokerClusterName()),
-            new MessageArrivingListener() {
-                @Override
-                public void arriving(String topic, int queueId, long logicOffset, long tagsCode,
-                    long msgStoreTime, byte[] filterBitMap, Map<String, String> properties) {
-                }
-            }
-            , brokerConfig);
-
-        assertThat(master.load()).isTrue();
-
-        master.start();
-
-        return master;
-    }
-
-    protected void putMsg(DefaultMessageStore master) throws Exception {
-        long totalMsgs = 200;
-
-        for (long i = 0; i < totalMsgs; i++) {
-            master.putMessage(buildMessage());
         }
     }
 
@@ -175,7 +109,7 @@ public class ConsumeQueueTest {
             assertThat(cq).isNotNull();
 
             Object dispatchResult = method.invoke(cq, dispatchRequest.getCommitLogOffset(),
-                dispatchRequest.getMsgSize(), dispatchRequest.getTagsCode(), dispatchRequest.getConsumeQueueOffset());
+                    dispatchRequest.getMsgSize(), dispatchRequest.getTagsCode(), dispatchRequest.getConsumeQueueOffset());
 
             assertThat(Boolean.parseBoolean(dispatchResult.toString())).isTrue();
 
@@ -201,12 +135,12 @@ public class ConsumeQueueTest {
 
         master.getDispatcherList().addFirst(new CommitLogDispatcher() {
 
+            private int runCount = 0;
+
             @Override
             public void dispatch(DispatchRequest request) {
                 runCount++;
             }
-
-            private int runCount = 0;
         });
 
         try {
@@ -262,5 +196,73 @@ public class ConsumeQueueTest {
             master.destroy();
             UtilAll.deleteFile(new File(storePath));
         }
+    }
+
+    protected DefaultMessageStore gen() throws Exception {
+        MessageStoreConfig messageStoreConfig = buildStoreConfig(
+                commitLogFileSize, cqFileSize, true, cqExtFileSize
+        );
+
+        BrokerConfig brokerConfig = new BrokerConfig();
+
+        DefaultMessageStore master = new DefaultMessageStore(
+                messageStoreConfig,
+                new BrokerStatsManager(brokerConfig.getBrokerClusterName()),
+                new MessageArrivingListener() {
+                    @Override
+                    public void arriving(String topic, int queueId, long logicOffset, long tagsCode,
+                                         long msgStoreTime, byte[] filterBitMap, Map<String, String> properties) {
+                    }
+                }
+                , brokerConfig);
+
+        assertThat(master.load()).isTrue();
+
+        master.start();
+
+        return master;
+    }
+
+    protected void putMsg(DefaultMessageStore master) throws Exception {
+        long totalMsgs = 200;
+
+        for (long i = 0; i < totalMsgs; i++) {
+            master.putMessage(buildMessage());
+        }
+    }
+
+    public MessageStoreConfig buildStoreConfig(int commitLogFileSize, int cqFileSize,
+                                               boolean enableCqExt, int cqExtFileSize) {
+        MessageStoreConfig messageStoreConfig = new MessageStoreConfig();
+        messageStoreConfig.setMapedFileSizeCommitLog(commitLogFileSize);
+        messageStoreConfig.setMapedFileSizeConsumeQueue(cqFileSize);
+        messageStoreConfig.setMappedFileSizeConsumeQueueExt(cqExtFileSize);
+        messageStoreConfig.setMessageIndexEnable(false);
+        messageStoreConfig.setEnableConsumeQueueExt(enableCqExt);
+
+        messageStoreConfig.setStorePathRootDir(storePath);
+        messageStoreConfig.setStorePathCommitLog(storePath + File.separator + "commitlog");
+
+        return messageStoreConfig;
+    }
+
+    public MessageExtBrokerInner buildMessage() {
+        MessageExtBrokerInner msg = new MessageExtBrokerInner();
+        msg.setTopic(topic);
+        msg.setTags("TAG1");
+        msg.setKeys("Hello");
+        msg.setBody(msgBody);
+        msg.setKeys(String.valueOf(System.currentTimeMillis()));
+        msg.setQueueId(queueId);
+        msg.setSysFlag(0);
+        msg.setBornTimestamp(System.currentTimeMillis());
+        msg.setStoreHost(StoreHost);
+        msg.setBornHost(BornHost);
+        for (int i = 0; i < 1; i++) {
+            msg.putUserProperty(String.valueOf(i), "imagoodperson" + i);
+        }
+        msg.setPropertiesString(MessageDecoder.messageProperties2String(msg.getProperties()));
+
+        return msg;
     }
 }

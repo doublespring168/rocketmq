@@ -38,9 +38,8 @@ import java.util.List;
 public abstract class UnaryExpression implements Expression {
 
     private static final BigDecimal BD_LONG_MIN_VALUE = BigDecimal.valueOf(Long.MIN_VALUE);
-    protected Expression right;
-
     public UnaryType unaryType;
+    protected Expression right;
 
     public UnaryExpression(Expression left) {
         this.right = left;
@@ -70,8 +69,38 @@ public abstract class UnaryExpression implements Expression {
         };
     }
 
+    private static Number negate(Number left) {
+        Class clazz = left.getClass();
+        if (clazz == Integer.class) {
+            return new Integer(-left.intValue());
+        } else if (clazz == Long.class) {
+            return new Long(-left.longValue());
+        } else if (clazz == Float.class) {
+            return new Float(-left.floatValue());
+        } else if (clazz == Double.class) {
+            return new Double(-left.doubleValue());
+        } else if (clazz == BigDecimal.class) {
+            // We ussually get a big deciamal when we have Long.MIN_VALUE
+            // constant in the
+            // Selector. Long.MIN_VALUE is too big to store in a Long as a
+            // positive so we store it
+            // as a Big decimal. But it gets Negated right away.. to here we try
+            // to covert it back
+            // to a Long.
+            BigDecimal bd = (BigDecimal) left;
+            bd = bd.negate();
+
+            if (BD_LONG_MIN_VALUE.compareTo(bd) == 0) {
+                return Long.valueOf(Long.MIN_VALUE);
+            }
+            return bd;
+        } else {
+            throw new RuntimeException("Don't know how to negate: " + left);
+        }
+    }
+
     public static BooleanExpression createInExpression(PropertyExpression right, List<Object> elements,
-        final boolean not) {
+                                                       final boolean not) {
 
         // Use a HashSet if there are many elements.
         Collection<Object> t;
@@ -85,24 +114,6 @@ public abstract class UnaryExpression implements Expression {
         final Collection inList = t;
 
         return new UnaryInExpression(right, UnaryType.IN, inList, not) {
-            public Object evaluate(EvaluationContext context) throws Exception {
-
-                Object rvalue = right.evaluate(context);
-                if (rvalue == null) {
-                    return null;
-                }
-                if (rvalue.getClass() != String.class) {
-                    return null;
-                }
-
-                if ((inList != null && inList.contains(rvalue)) ^ not) {
-                    return Boolean.TRUE;
-                } else {
-                    return Boolean.FALSE;
-                }
-
-            }
-
             public String toString() {
                 StringBuffer answer = new StringBuffer();
                 answer.append(right);
@@ -122,7 +133,25 @@ public abstract class UnaryExpression implements Expression {
 
                 answer.append(" )");
                 return answer.toString();
+            }            public Object evaluate(EvaluationContext context) throws Exception {
+
+                Object rvalue = right.evaluate(context);
+                if (rvalue == null) {
+                    return null;
+                }
+                if (rvalue.getClass() != String.class) {
+                    return null;
+                }
+
+                if ((inList != null && inList.contains(rvalue)) ^ not) {
+                    return Boolean.TRUE;
+                } else {
+                    return Boolean.FALSE;
+                }
+
             }
+
+
 
             public String getExpressionSymbol() {
                 if (not) {
@@ -132,17 +161,6 @@ public abstract class UnaryExpression implements Expression {
                 }
             }
         };
-    }
-
-    abstract static class BooleanUnaryExpression extends UnaryExpression implements BooleanExpression {
-        public BooleanUnaryExpression(Expression left, UnaryType unaryType) {
-            super(left, unaryType);
-        }
-
-        public boolean matches(EvaluationContext context) throws Exception {
-            Object object = evaluate(context);
-            return object != null && object == Boolean.TRUE;
-        }
     }
 
     public static BooleanExpression createNOT(BooleanExpression left) {
@@ -184,36 +202,6 @@ public abstract class UnaryExpression implements Expression {
         };
     }
 
-    private static Number negate(Number left) {
-        Class clazz = left.getClass();
-        if (clazz == Integer.class) {
-            return new Integer(-left.intValue());
-        } else if (clazz == Long.class) {
-            return new Long(-left.longValue());
-        } else if (clazz == Float.class) {
-            return new Float(-left.floatValue());
-        } else if (clazz == Double.class) {
-            return new Double(-left.doubleValue());
-        } else if (clazz == BigDecimal.class) {
-            // We ussually get a big deciamal when we have Long.MIN_VALUE
-            // constant in the
-            // Selector. Long.MIN_VALUE is too big to store in a Long as a
-            // positive so we store it
-            // as a Big decimal. But it gets Negated right away.. to here we try
-            // to covert it back
-            // to a Long.
-            BigDecimal bd = (BigDecimal) left;
-            bd = bd.negate();
-
-            if (BD_LONG_MIN_VALUE.compareTo(bd) == 0) {
-                return Long.valueOf(Long.MIN_VALUE);
-            }
-            return bd;
-        } else {
-            throw new RuntimeException("Don't know how to negate: " + left);
-        }
-    }
-
     public Expression getRight() {
         return right;
     }
@@ -228,13 +216,6 @@ public abstract class UnaryExpression implements Expression {
 
     public void setUnaryType(UnaryType unaryType) {
         this.unaryType = unaryType;
-    }
-
-    /**
-     * @see Object#toString()
-     */
-    public String toString() {
-        return "(" + getExpressionSymbol() + " " + right.toString() + ")";
     }
 
     /**
@@ -257,9 +238,27 @@ public abstract class UnaryExpression implements Expression {
     }
 
     /**
+     * @see Object#toString()
+     */
+    public String toString() {
+        return "(" + getExpressionSymbol() + " " + right.toString() + ")";
+    }
+
+    /**
      * Returns the symbol that represents this binary expression. For example,
      * addition is represented by "+"
      */
     public abstract String getExpressionSymbol();
+
+    abstract static class BooleanUnaryExpression extends UnaryExpression implements BooleanExpression {
+        public BooleanUnaryExpression(Expression left, UnaryType unaryType) {
+            super(left, unaryType);
+        }
+
+        public boolean matches(EvaluationContext context) throws Exception {
+            Object object = evaluate(context);
+            return object != null && object == Boolean.TRUE;
+        }
+    }
 
 }

@@ -16,10 +16,6 @@
  */
 package org.apache.rocketmq.client.consumer;
 
-import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import org.apache.rocketmq.client.ClientConfig;
 import org.apache.rocketmq.client.impl.CommunicationMode;
 import org.apache.rocketmq.client.impl.FindBrokerResult;
@@ -42,12 +38,13 @@ import org.mockito.invocation.InvocationOnMock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.mockito.stubbing.Answer;
 
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.nullable;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.when;
 
@@ -109,6 +106,11 @@ public class DefaultMQPullConsumerTest {
         assertThat(pullResult.getMsgFoundList()).isEqualTo(new ArrayList<Object>());
     }
 
+    private PullResultExt createPullResult(PullMessageRequestHeader requestHeader, PullStatus pullStatus,
+                                           List<MessageExt> messageExtList) throws Exception {
+        return new PullResultExt(pullStatus, requestHeader.getQueueOffset() + messageExtList.size(), 123, 2048, messageExtList, 0, new byte[]{});
+    }
+
     @Test
     public void testPullMessage_NotFound() throws Exception {
         doAnswer(new Answer() {
@@ -155,10 +157,5 @@ public class DefaultMQPullConsumerTest {
 
             }
         });
-    }
-
-    private PullResultExt createPullResult(PullMessageRequestHeader requestHeader, PullStatus pullStatus,
-        List<MessageExt> messageExtList) throws Exception {
-        return new PullResultExt(pullStatus, requestHeader.getQueueOffset() + messageExtList.size(), 123, 2048, messageExtList, 0, new byte[] {});
     }
 }

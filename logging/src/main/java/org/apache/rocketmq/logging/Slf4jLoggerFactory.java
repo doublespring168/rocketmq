@@ -28,8 +28,8 @@ public class Slf4jLoggerFactory extends InternalLoggerFactory {
     }
 
     @Override
-    protected String getLoggerType() {
-        return InternalLoggerFactory.LOGGER_SLF4J;
+    protected void shutdown() {
+
     }
 
     @Override
@@ -38,8 +38,8 @@ public class Slf4jLoggerFactory extends InternalLoggerFactory {
     }
 
     @Override
-    protected void shutdown() {
-
+    protected String getLoggerType() {
+        return InternalLoggerFactory.LOGGER_SLF4J;
     }
 
     public static class Slf4jLogger implements InternalLogger {

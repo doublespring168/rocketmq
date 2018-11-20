@@ -16,14 +16,15 @@
  */
 package org.apache.rocketmq.common;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import org.apache.rocketmq.common.annotation.ImportantField;
 import org.apache.rocketmq.common.constant.LoggerName;
 import org.apache.rocketmq.common.constant.PermName;
 import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.logging.InternalLoggerFactory;
 import org.apache.rocketmq.remoting.common.RemotingUtil;
+
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 
 public class BrokerConfig {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.COMMON_LOGGER_NAME);
@@ -171,6 +172,16 @@ public class BrokerConfig {
     @ImportantField
     private long transactionCheckInterval = 60 * 1000;
 
+    public static String localHostName() {
+        try {
+            return InetAddress.getLocalHost().getHostName();
+        } catch (UnknownHostException e) {
+            log.error("Failed to obtain the host name", e);
+        }
+
+        return "DEFAULT_BROKER";
+    }
+
     public boolean isTraceOn() {
         return traceOn;
     }
@@ -233,16 +244,6 @@ public class BrokerConfig {
 
     public void setSlaveReadEnable(final boolean slaveReadEnable) {
         this.slaveReadEnable = slaveReadEnable;
-    }
-
-    public static String localHostName() {
-        try {
-            return InetAddress.getLocalHost().getHostName();
-        } catch (UnknownHostException e) {
-            log.error("Failed to obtain the host name", e);
-        }
-
-        return "DEFAULT_BROKER";
     }
 
     public int getRegisterBrokerTimeoutMills() {

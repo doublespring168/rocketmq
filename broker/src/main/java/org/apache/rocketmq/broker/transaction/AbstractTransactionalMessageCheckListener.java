@@ -25,17 +25,10 @@ import org.apache.rocketmq.common.protocol.header.CheckTransactionStateRequestHe
 import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.logging.InternalLoggerFactory;
 
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 public abstract class AbstractTransactionalMessageCheckListener {
     private static final InternalLogger LOGGER = InternalLoggerFactory.getLogger(LoggerName.TRANSACTION_LOGGER_NAME);
-
-    private BrokerController brokerController;
-
     private static ExecutorService executorService = new ThreadPoolExecutor(2, 5, 100, TimeUnit.SECONDS, new ArrayBlockingQueue<Runnable>(2000), new ThreadFactory() {
         @Override
         public Thread newThread(Runnable r) {
@@ -44,12 +37,26 @@ public abstract class AbstractTransactionalMessageCheckListener {
             return thread;
         }
     });
+    private BrokerController brokerController;
 
     public AbstractTransactionalMessageCheckListener() {
     }
 
     public AbstractTransactionalMessageCheckListener(BrokerController brokerController) {
         this.brokerController = brokerController;
+    }
+
+    public void resolveHalfMsg(final MessageExt msgExt) {
+        executorService.execute(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    sendCheckMessage(msgExt);
+                } catch (Exception e) {
+                    LOGGER.error("Send check message error!", e);
+                }
+            }
+        });
     }
 
     public void sendCheckMessage(MessageExt msgExt) throws Exception {
@@ -71,25 +78,8 @@ public abstract class AbstractTransactionalMessageCheckListener {
         }
     }
 
-    public void resolveHalfMsg(final MessageExt msgExt) {
-        executorService.execute(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    sendCheckMessage(msgExt);
-                } catch (Exception e) {
-                    LOGGER.error("Send check message error!", e);
-                }
-            }
-        });
-    }
-
     public BrokerController getBrokerController() {
         return brokerController;
-    }
-
-    public void shutDown() {
-        executorService.shutdown();
     }
 
     /**
@@ -99,6 +89,10 @@ public abstract class AbstractTransactionalMessageCheckListener {
      */
     public void setBrokerController(BrokerController brokerController) {
         this.brokerController = brokerController;
+    }
+
+    public void shutDown() {
+        executorService.shutdown();
     }
 
     /**

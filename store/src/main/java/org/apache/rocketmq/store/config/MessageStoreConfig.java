@@ -16,9 +16,10 @@
  */
 package org.apache.rocketmq.store.config;
 
-import java.io.File;
 import org.apache.rocketmq.common.annotation.ImportantField;
 import org.apache.rocketmq.store.ConsumeQueue;
+
+import java.io.File;
 
 public class MessageStoreConfig {
     //The root directory in which the log data is kept
@@ -28,7 +29,7 @@ public class MessageStoreConfig {
     //The directory in which the commitlog is kept
     @ImportantField
     private String storePathCommitLog = System.getProperty("user.home") + File.separator + "store"
-        + File.separator + "commitlog";
+            + File.separator + "commitlog";
 
     // CommitLog file size,default is 1G
     private int mapedFileSizeCommitLog = 1024 * 1024 * 1024;
@@ -475,16 +476,8 @@ public class MessageStoreConfig {
         this.haHousekeepingInterval = haHousekeepingInterval;
     }
 
-    public BrokerRole getBrokerRole() {
-        return brokerRole;
-    }
-
     public void setBrokerRole(BrokerRole brokerRole) {
         this.brokerRole = brokerRole;
-    }
-
-    public void setBrokerRole(String brokerRole) {
-        this.brokerRole = BrokerRole.valueOf(brokerRole);
     }
 
     public int getHaTransferBatchSize() {
@@ -503,16 +496,8 @@ public class MessageStoreConfig {
         this.haSlaveFallbehindMax = haSlaveFallbehindMax;
     }
 
-    public FlushDiskType getFlushDiskType() {
-        return flushDiskType;
-    }
-
     public void setFlushDiskType(FlushDiskType flushDiskType) {
         this.flushDiskType = flushDiskType;
-    }
-
-    public void setFlushDiskType(String type) {
-        this.flushDiskType = FlushDiskType.valueOf(type);
     }
 
     public int getSyncFlushTimeout() {
@@ -611,7 +596,23 @@ public class MessageStoreConfig {
      */
     public boolean isTransientStorePoolEnable() {
         return transientStorePoolEnable && FlushDiskType.ASYNC_FLUSH == getFlushDiskType()
-            && BrokerRole.SLAVE != getBrokerRole();
+                && BrokerRole.SLAVE != getBrokerRole();
+    }
+
+    public FlushDiskType getFlushDiskType() {
+        return flushDiskType;
+    }
+
+    public BrokerRole getBrokerRole() {
+        return brokerRole;
+    }
+
+    public void setBrokerRole(String brokerRole) {
+        this.brokerRole = BrokerRole.valueOf(brokerRole);
+    }
+
+    public void setFlushDiskType(String type) {
+        this.flushDiskType = FlushDiskType.valueOf(type);
     }
 
     public void setTransientStorePoolEnable(final boolean transientStorePoolEnable) {

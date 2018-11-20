@@ -18,8 +18,6 @@ package org.apache.rocketmq.broker.processor;
 
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
-import java.util.HashMap;
-import java.util.UUID;
 import org.apache.rocketmq.broker.BrokerController;
 import org.apache.rocketmq.broker.client.ClientChannelInfo;
 import org.apache.rocketmq.broker.client.ConsumerGroupInfo;
@@ -40,6 +38,9 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.MockitoJUnitRunner;
+
+import java.util.HashMap;
+import java.util.UUID;
 
 import static org.apache.rocketmq.broker.processor.PullMessageProcessorTest.createConsumerData;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -69,13 +70,13 @@ public class ClientManageProcessorTest {
 
         ConsumerData consumerData = createConsumerData(group, topic);
         brokerController.getConsumerManager().registerConsumer(
-            consumerData.getGroupName(),
-            clientChannelInfo,
-            consumerData.getConsumeType(),
-            consumerData.getMessageModel(),
-            consumerData.getConsumeFromWhere(),
-            consumerData.getSubscriptionDataSet(),
-            false);
+                consumerData.getGroupName(),
+                clientChannelInfo,
+                consumerData.getConsumeType(),
+                consumerData.getMessageModel(),
+                consumerData.getConsumeFromWhere(),
+                consumerData.getSubscriptionDataSet(),
+                false);
     }
 
     @Test
@@ -94,6 +95,17 @@ public class ClientManageProcessorTest {
         assertThat(channelMap).isNull();
     }
 
+    private RemotingCommand createUnRegisterProducerCommand() {
+        UnregisterClientRequestHeader requestHeader = new UnregisterClientRequestHeader();
+        requestHeader.setClientID(clientId);
+        requestHeader.setProducerGroup(group);
+        RemotingCommand request = RemotingCommand.createRequestCommand(RequestCode.UNREGISTER_CLIENT, requestHeader);
+        request.setLanguage(LanguageCode.JAVA);
+        request.setVersion(100);
+        request.makeCustomHeaderToNet();
+        return request;
+    }
+
     @Test
     public void processRequest_UnRegisterConsumer() throws RemotingCommandException {
         ConsumerGroupInfo consumerGroupInfo = brokerController.getConsumerManager().getConsumerGroupInfo(group);
@@ -106,17 +118,6 @@ public class ClientManageProcessorTest {
 
         consumerGroupInfo = brokerController.getConsumerManager().getConsumerGroupInfo(group);
         assertThat(consumerGroupInfo).isNull();
-    }
-
-    private RemotingCommand createUnRegisterProducerCommand() {
-        UnregisterClientRequestHeader requestHeader = new UnregisterClientRequestHeader();
-        requestHeader.setClientID(clientId);
-        requestHeader.setProducerGroup(group);
-        RemotingCommand request = RemotingCommand.createRequestCommand(RequestCode.UNREGISTER_CLIENT, requestHeader);
-        request.setLanguage(LanguageCode.JAVA);
-        request.setVersion(100);
-        request.makeCustomHeaderToNet();
-        return request;
     }
 
     private RemotingCommand createUnRegisterConsumerCommand() {

@@ -31,6 +31,19 @@ public abstract class InternalLoggerFactory {
 
     private static ConcurrentHashMap<String, InternalLoggerFactory> loggerFactoryCache = new ConcurrentHashMap<String, InternalLoggerFactory>();
 
+    static {
+        try {
+            new Slf4jLoggerFactory();
+        } catch (Throwable e) {
+            //ignore
+        }
+        try {
+            new InnerLoggerFactory();
+        } catch (Throwable e) {
+            //ignore
+        }
+    }
+
     public static InternalLogger getLogger(Class clazz) {
         return getLogger(clazz.getName());
     }
@@ -38,6 +51,8 @@ public abstract class InternalLoggerFactory {
     public static InternalLogger getLogger(String name) {
         return getLoggerFactory().getLoggerInstance(name);
     }
+
+    protected abstract InternalLogger getLoggerInstance(String name);
 
     private static InternalLoggerFactory getLoggerFactory() {
         InternalLoggerFactory internalLoggerFactory = null;
@@ -60,19 +75,6 @@ public abstract class InternalLoggerFactory {
         loggerType = type;
     }
 
-    static {
-        try {
-            new Slf4jLoggerFactory();
-        } catch (Throwable e) {
-            //ignore
-        }
-        try {
-            new InnerLoggerFactory();
-        } catch (Throwable e) {
-            //ignore
-        }
-    }
-
     protected void doRegister() {
         String loggerType = getLoggerType();
         if (loggerFactoryCache.get(loggerType) != null) {
@@ -81,9 +83,7 @@ public abstract class InternalLoggerFactory {
         loggerFactoryCache.put(loggerType, this);
     }
 
-    protected abstract void shutdown();
-
-    protected abstract InternalLogger getLoggerInstance(String name);
-
     protected abstract String getLoggerType();
+
+    protected abstract void shutdown();
 }

@@ -17,11 +17,7 @@
 
 package org.apache.rocketmq.test.factory;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class TagMessage {
     private List<String> tags = null;
@@ -38,6 +34,13 @@ public class TagMessage {
         init();
     }
 
+    private void init() {
+        for (String tag : tags) {
+            List<Object> tagMsgs = MQMessageFactory.getRMQMessage(tag, topic, msgSize);
+            rmqMsgs.put(tag, tagMsgs);
+        }
+    }
+
     public TagMessage(String[] tags, String topic, int msgSize) {
         this(Arrays.asList(tags), topic, msgSize);
     }
@@ -48,13 +51,6 @@ public class TagMessage {
         this.msgSize = msgSize;
 
         init();
-    }
-
-    private void init() {
-        for (String tag : tags) {
-            List<Object> tagMsgs = MQMessageFactory.getRMQMessage(tag, topic, msgSize);
-            rmqMsgs.put(tag, tagMsgs);
-        }
     }
 
     public List<Object> getMessageByTag(String tag) {

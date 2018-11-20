@@ -27,15 +27,7 @@ import org.apache.rocketmq.common.message.MessageExt;
 import org.apache.rocketmq.common.message.MessageQueue;
 import org.apache.rocketmq.remoting.netty.NettyClientConfig;
 import org.apache.rocketmq.remoting.netty.NettyServerConfig;
-import org.apache.rocketmq.store.AppendMessageResult;
-import org.apache.rocketmq.store.AppendMessageStatus;
-import org.apache.rocketmq.store.GetMessageResult;
-import org.apache.rocketmq.store.GetMessageStatus;
-import org.apache.rocketmq.store.MessageExtBrokerInner;
-import org.apache.rocketmq.store.MessageFilter;
-import org.apache.rocketmq.store.MessageStore;
-import org.apache.rocketmq.store.PutMessageResult;
-import org.apache.rocketmq.store.PutMessageStatus;
+import org.apache.rocketmq.store.*;
 import org.apache.rocketmq.store.config.MessageStoreConfig;
 import org.junit.Before;
 import org.junit.Test;
@@ -49,10 +41,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -62,7 +51,7 @@ public class TransactionalMessageBridgeTest {
 
     @Spy
     private BrokerController brokerController = new BrokerController(new BrokerConfig(), new NettyServerConfig(),
-        new NettyClientConfig(), new MessageStoreConfig());
+            new NettyClientConfig(), new MessageStoreConfig());
 
     @Mock
     private MessageStore messageStore;
@@ -79,10 +68,21 @@ public class TransactionalMessageBridgeTest {
         assertThat(isSuccess).isTrue();
     }
 
+    private MessageExtBrokerInner createMessageBrokerInner() {
+        MessageExtBrokerInner inner = new MessageExtBrokerInner();
+        inner.setTransactionId("12342123444");
+        inner.setBornTimestamp(System.currentTimeMillis());
+        inner.setBody("prepare".getBytes());
+        inner.setMsgId("123456-123");
+        inner.setQueueId(0);
+        inner.setTopic("hello");
+        return inner;
+    }
+
     @Test
     public void testPutHalfMessage() {
         when(messageStore.putMessage(any(MessageExtBrokerInner.class))).thenReturn(new PutMessageResult
-            (PutMessageStatus.PUT_OK, new AppendMessageResult(AppendMessageStatus.PUT_OK)));
+                (PutMessageStatus.PUT_OK, new AppendMessageResult(AppendMessageStatus.PUT_OK)));
         PutMessageResult result = transactionBridge.putHalfMessage(createMessageBrokerInner());
         assertThat(result.getPutMessageStatus()).isEqualTo(PutMessageStatus.PUT_OK);
     }
@@ -96,7 +96,7 @@ public class TransactionalMessageBridgeTest {
     @Test
     public void testFetchConsumeOffset() {
         MessageQueue mq = new MessageQueue(TransactionalMessageUtil.buildOpTopic(), this.brokerController.getBrokerConfig().getBrokerName(),
-            0);
+                0);
         long offset = transactionBridge.fetchConsumeOffset(mq);
         assertThat(offset).isGreaterThan(-1);
     }
@@ -104,67 +104,15 @@ public class TransactionalMessageBridgeTest {
     @Test
     public void updateConsumeOffset() {
         MessageQueue mq = new MessageQueue(TransactionalMessageUtil.buildOpTopic(), this.brokerController.getBrokerConfig().getBrokerName(),
-            0);
+                0);
         transactionBridge.updateConsumeOffset(mq, 0);
     }
 
     @Test
     public void testGetHalfMessage() {
-        when(messageStore.getMessage(anyString(), anyString(), anyInt(), anyLong(), anyInt(),  ArgumentMatchers.nullable(MessageFilter.class))).thenReturn(createGetMessageResult(GetMessageStatus.NO_MESSAGE_IN_QUEUE));
+        when(messageStore.getMessage(anyString(), anyString(), anyInt(), anyLong(), anyInt(), ArgumentMatchers.nullable(MessageFilter.class))).thenReturn(createGetMessageResult(GetMessageStatus.NO_MESSAGE_IN_QUEUE));
         PullResult result = transactionBridge.getHalfMessage(0, 0, 1);
         assertThat(result.getPullStatus()).isEqualTo(PullStatus.NO_NEW_MSG);
-    }
-
-    @Test
-    public void testGetOpMessage() {
-        when(messageStore.getMessage(anyString(), anyString(), anyInt(), anyLong(), anyInt(),  ArgumentMatchers.nullable(MessageFilter.class))).thenReturn(createGetMessageResult(GetMessageStatus.NO_MESSAGE_IN_QUEUE));
-        PullResult result = transactionBridge.getOpMessage(0, 0, 1);
-        assertThat(result.getPullStatus()).isEqualTo(PullStatus.NO_NEW_MSG);
-    }
-
-    @Test
-    public void testPutMessageReturnResult() {
-        when(messageStore.putMessage(any(MessageExtBrokerInner.class))).thenReturn(new PutMessageResult
-            (PutMessageStatus.PUT_OK, new AppendMessageResult(AppendMessageStatus.PUT_OK)));
-        PutMessageResult result = transactionBridge.putMessageReturnResult(createMessageBrokerInner());
-        assertThat(result.getPutMessageStatus()).isEqualTo(PutMessageStatus.PUT_OK);
-    }
-
-    @Test
-    public void testPutMessage() {
-        when(messageStore.putMessage(any(MessageExtBrokerInner.class))).thenReturn(new PutMessageResult
-            (PutMessageStatus.PUT_OK, new AppendMessageResult(AppendMessageStatus.PUT_OK)));
-        Boolean success = transactionBridge.putMessage(createMessageBrokerInner());
-        assertThat(success).isEqualTo(true);
-    }
-
-    @Test
-    public void testRenewImmunityHalfMessageInner() {
-        MessageExt messageExt = createMessageBrokerInner();
-        final String offset = "123456789";
-        MessageExtBrokerInner msgInner = transactionBridge.renewImmunityHalfMessageInner(messageExt);
-        MessageAccessor.putProperty(msgInner, MessageConst.PROPERTY_TRANSACTION_PREPARED_QUEUE_OFFSET,offset);
-        assertThat(msgInner).isNotNull();
-        Map<String,String> properties = msgInner.getProperties();
-        assertThat(properties).isNotNull();
-        String resOffset = properties.get(MessageConst.PROPERTY_TRANSACTION_PREPARED_QUEUE_OFFSET);
-        assertThat(resOffset).isEqualTo(offset);
-    }
-
-
-    @Test
-    public void testRenewHalfMessageInner() {
-        MessageExt messageExt = new MessageExt();
-        long bornTimeStamp = messageExt.getBornTimestamp();
-        MessageExt messageExtRes = transactionBridge.renewHalfMessageInner(messageExt);
-        assertThat( messageExtRes.getBornTimestamp()).isEqualTo(bornTimeStamp);
-    }
-
-    @Test
-    public void testLookMessageByOffset(){
-        when(messageStore.lookMessageByOffset(anyLong())).thenReturn(new MessageExt());
-        MessageExt messageExt = transactionBridge.lookMessageByOffset(123);
-        assertThat(messageExt).isNotNull();
     }
 
     private GetMessageResult createGetMessageResult(GetMessageStatus status) {
@@ -176,14 +124,54 @@ public class TransactionalMessageBridgeTest {
         return getMessageResult;
     }
 
-    private MessageExtBrokerInner createMessageBrokerInner() {
-        MessageExtBrokerInner inner = new MessageExtBrokerInner();
-        inner.setTransactionId("12342123444");
-        inner.setBornTimestamp(System.currentTimeMillis());
-        inner.setBody("prepare".getBytes());
-        inner.setMsgId("123456-123");
-        inner.setQueueId(0);
-        inner.setTopic("hello");
-        return inner;
+    @Test
+    public void testGetOpMessage() {
+        when(messageStore.getMessage(anyString(), anyString(), anyInt(), anyLong(), anyInt(), ArgumentMatchers.nullable(MessageFilter.class))).thenReturn(createGetMessageResult(GetMessageStatus.NO_MESSAGE_IN_QUEUE));
+        PullResult result = transactionBridge.getOpMessage(0, 0, 1);
+        assertThat(result.getPullStatus()).isEqualTo(PullStatus.NO_NEW_MSG);
+    }
+
+    @Test
+    public void testPutMessageReturnResult() {
+        when(messageStore.putMessage(any(MessageExtBrokerInner.class))).thenReturn(new PutMessageResult
+                (PutMessageStatus.PUT_OK, new AppendMessageResult(AppendMessageStatus.PUT_OK)));
+        PutMessageResult result = transactionBridge.putMessageReturnResult(createMessageBrokerInner());
+        assertThat(result.getPutMessageStatus()).isEqualTo(PutMessageStatus.PUT_OK);
+    }
+
+    @Test
+    public void testPutMessage() {
+        when(messageStore.putMessage(any(MessageExtBrokerInner.class))).thenReturn(new PutMessageResult
+                (PutMessageStatus.PUT_OK, new AppendMessageResult(AppendMessageStatus.PUT_OK)));
+        Boolean success = transactionBridge.putMessage(createMessageBrokerInner());
+        assertThat(success).isEqualTo(true);
+    }
+
+    @Test
+    public void testRenewImmunityHalfMessageInner() {
+        MessageExt messageExt = createMessageBrokerInner();
+        final String offset = "123456789";
+        MessageExtBrokerInner msgInner = transactionBridge.renewImmunityHalfMessageInner(messageExt);
+        MessageAccessor.putProperty(msgInner, MessageConst.PROPERTY_TRANSACTION_PREPARED_QUEUE_OFFSET, offset);
+        assertThat(msgInner).isNotNull();
+        Map<String, String> properties = msgInner.getProperties();
+        assertThat(properties).isNotNull();
+        String resOffset = properties.get(MessageConst.PROPERTY_TRANSACTION_PREPARED_QUEUE_OFFSET);
+        assertThat(resOffset).isEqualTo(offset);
+    }
+
+    @Test
+    public void testRenewHalfMessageInner() {
+        MessageExt messageExt = new MessageExt();
+        long bornTimeStamp = messageExt.getBornTimestamp();
+        MessageExt messageExtRes = transactionBridge.renewHalfMessageInner(messageExt);
+        assertThat(messageExtRes.getBornTimestamp()).isEqualTo(bornTimeStamp);
+    }
+
+    @Test
+    public void testLookMessageByOffset() {
+        when(messageStore.lookMessageByOffset(anyLong())).thenReturn(new MessageExt());
+        MessageExt messageExt = transactionBridge.lookMessageByOffset(123);
+        assertThat(messageExt).isNotNull();
     }
 }

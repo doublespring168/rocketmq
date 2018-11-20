@@ -20,11 +20,7 @@ import org.apache.rocketmq.common.constant.LoggerName;
 import org.apache.rocketmq.logging.InnerLoggerFactory;
 import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.logging.InternalLoggerFactory;
-import org.apache.rocketmq.logging.inner.Appender;
-import org.apache.rocketmq.logging.inner.Layout;
-import org.apache.rocketmq.logging.inner.Level;
-import org.apache.rocketmq.logging.inner.Logger;
-import org.apache.rocketmq.logging.inner.LoggingBuilder;
+import org.apache.rocketmq.logging.inner.*;
 import org.apache.rocketmq.remoting.common.RemotingHelper;
 
 public class ClientLogger {
@@ -57,27 +53,6 @@ public class ClientLogger {
         }
     }
 
-    private static synchronized void createClientAppender() {
-        String clientLogRoot = System.getProperty(CLIENT_LOG_ROOT, System.getProperty("user.home") + "/logs/rocketmqlogs");
-        String clientLogMaxIndex = System.getProperty(CLIENT_LOG_MAXINDEX, "10");
-        String clientLogFileName = System.getProperty(CLIENT_LOG_FILENAME, "rocketmq_client.log");
-        String maxFileSize = System.getProperty(CLIENT_LOG_FILESIZE, "1073741824");
-        String asyncQueueSize = System.getProperty(CLIENT_LOG_ASYNC_QUEUESIZE, "1024");
-
-        String logFileName = clientLogRoot + "/" + clientLogFileName;
-
-        int maxFileIndex = Integer.parseInt(clientLogMaxIndex);
-        int queueSize = Integer.parseInt(asyncQueueSize);
-
-        Layout layout = LoggingBuilder.newLayoutBuilder().withDefaultLayout().build();
-
-        rocketmqClientAppender = LoggingBuilder.newAppenderBuilder()
-            .withRollingFileAppender(logFileName, maxFileSize, maxFileIndex)
-            .withAsync(false, queueSize).withName(ROCKETMQ_CLIENT_APPENDER_NAME).withLayout(layout).build();
-
-        Logger.getRootLogger().addAppender(rocketmqClientAppender);
-    }
-
     private static InternalLogger createLogger(final String loggerName) {
         String clientLogLevel = System.getProperty(CLIENT_LOG_LEVEL, "INFO");
         boolean additive = "true".equalsIgnoreCase(System.getProperty(CLIENT_LOG_ADDITIVE));
@@ -93,6 +68,27 @@ public class ClientLogger {
         realLogger.setLevel(Level.toLevel(clientLogLevel));
         realLogger.setAdditivity(additive);
         return logger;
+    }
+
+    private static synchronized void createClientAppender() {
+        String clientLogRoot = System.getProperty(CLIENT_LOG_ROOT, System.getProperty("user.home") + "/logs/rocketmqlogs");
+        String clientLogMaxIndex = System.getProperty(CLIENT_LOG_MAXINDEX, "10");
+        String clientLogFileName = System.getProperty(CLIENT_LOG_FILENAME, "rocketmq_client.log");
+        String maxFileSize = System.getProperty(CLIENT_LOG_FILESIZE, "1073741824");
+        String asyncQueueSize = System.getProperty(CLIENT_LOG_ASYNC_QUEUESIZE, "1024");
+
+        String logFileName = clientLogRoot + "/" + clientLogFileName;
+
+        int maxFileIndex = Integer.parseInt(clientLogMaxIndex);
+        int queueSize = Integer.parseInt(asyncQueueSize);
+
+        Layout layout = LoggingBuilder.newLayoutBuilder().withDefaultLayout().build();
+
+        rocketmqClientAppender = LoggingBuilder.newAppenderBuilder()
+                .withRollingFileAppender(logFileName, maxFileSize, maxFileIndex)
+                .withAsync(false, queueSize).withName(ROCKETMQ_CLIENT_APPENDER_NAME).withLayout(layout).build();
+
+        Logger.getRootLogger().addAppender(rocketmqClientAppender);
     }
 
     public static InternalLogger getLog() {

@@ -48,6 +48,11 @@ public class Configuration {
         this.log = log;
     }
 
+    public Configuration(InternalLogger log, String storePath, Object... configObjects) {
+        this(log, configObjects);
+        this.storePath = storePath;
+    }
+
     public Configuration(InternalLogger log, Object... configObjects) {
         this.log = log;
         if (configObjects == null || configObjects.length == 0) {
@@ -56,11 +61,6 @@ public class Configuration {
         for (Object configObject : configObjects) {
             registerConfig(configObject);
         }
-    }
-
-    public Configuration(InternalLogger log, String storePath, Object... configObjects) {
-        this(log, configObjects);
-        this.storePath = storePath;
     }
 
     /**
@@ -86,6 +86,16 @@ public class Configuration {
             log.error("registerConfig lock error");
         }
         return this;
+    }
+
+    private void merge(Properties from, Properties to) {
+        for (Object key : from.keySet()) {
+            Object fromObj = from.get(key), toObj = to.get(key);
+            if (toObj != null && !toObj.equals(fromObj)) {
+                log.info("Replace, key: {}, value: {} -> {}", key, toObj, fromObj);
+            }
+            to.put(key, fromObj);
+        }
     }
 
     /**
@@ -130,7 +140,7 @@ public class Configuration {
                 // check
                 this.storePathField = object.getClass().getDeclaredField(fieldName);
                 assert this.storePathField != null
-                    && !Modifier.isStatic(this.storePathField.getModifiers());
+                        && !Modifier.isStatic(this.storePathField.getModifiers());
                 this.storePathField.setAccessible(true);
             } catch (NoSuchFieldException e) {
                 throw new RuntimeException(e);
@@ -140,6 +150,84 @@ public class Configuration {
         } catch (InterruptedException e) {
             log.error("setStorePathFromConfig lock error");
         }
+    }
+
+    public void update(Properties properties) {
+        try {
+            readWriteLock.writeLock().lockInterruptibly();
+
+            try {
+                // the property must be exist when update
+                mergeIfExist(properties, this.allConfigs);
+
+                for (Object configObject : configObjectList) {
+                    // not allConfigs to update...
+                    MixAll.properties2Object(properties, configObject);
+                }
+
+                this.dataVersion.nextVersion();
+
+            } finally {
+                readWriteLock.writeLock().unlock();
+            }
+        } catch (InterruptedException e) {
+            log.error("update lock error, {}", properties);
+            return;
+        }
+
+        persist();
+    }
+
+    private void mergeIfExist(Properties from, Properties to) {
+        for (Object key : from.keySet()) {
+            if (!to.containsKey(key)) {
+                continue;
+            }
+
+            Object fromObj = from.get(key), toObj = to.get(key);
+            if (toObj != null && !toObj.equals(fromObj)) {
+                log.info("Replace, key: {}, value: {} -> {}", key, toObj, fromObj);
+            }
+            to.put(key, fromObj);
+        }
+    }
+
+    public void persist() {
+        try {
+            readWriteLock.readLock().lockInterruptibly();
+
+            try {
+                String allConfigs = getAllConfigsInternal();
+
+                MixAll.string2File(allConfigs, getStorePath());
+            } catch (IOException e) {
+                log.error("persist string2File error, ", e);
+            } finally {
+                readWriteLock.readLock().unlock();
+            }
+        } catch (InterruptedException e) {
+            log.error("persist lock error");
+        }
+    }
+
+    private String getAllConfigsInternal() {
+        StringBuilder stringBuilder = new StringBuilder();
+
+        // reload from config object ?
+        for (Object configObject : this.configObjectList) {
+            Properties properties = MixAll.object2Properties(configObject);
+            if (properties != null) {
+                merge(properties, this.allConfigs);
+            } else {
+                log.warn("getAllConfigsInternal object2Properties is null, {}", configObject.getClass());
+            }
+        }
+
+        {
+            stringBuilder.append(MixAll.properties2String(this.allConfigs));
+        }
+
+        return stringBuilder.toString();
     }
 
     private String getStorePath() {
@@ -169,50 +257,6 @@ public class Configuration {
 
     public void setStorePath(final String storePath) {
         this.storePath = storePath;
-    }
-
-    public void update(Properties properties) {
-        try {
-            readWriteLock.writeLock().lockInterruptibly();
-
-            try {
-                // the property must be exist when update
-                mergeIfExist(properties, this.allConfigs);
-
-                for (Object configObject : configObjectList) {
-                    // not allConfigs to update...
-                    MixAll.properties2Object(properties, configObject);
-                }
-
-                this.dataVersion.nextVersion();
-
-            } finally {
-                readWriteLock.writeLock().unlock();
-            }
-        } catch (InterruptedException e) {
-            log.error("update lock error, {}", properties);
-            return;
-        }
-
-        persist();
-    }
-
-    public void persist() {
-        try {
-            readWriteLock.readLock().lockInterruptibly();
-
-            try {
-                String allConfigs = getAllConfigsInternal();
-
-                MixAll.string2File(allConfigs, getStorePath());
-            } catch (IOException e) {
-                log.error("persist string2File error, ", e);
-            } finally {
-                readWriteLock.readLock().unlock();
-            }
-        } catch (InterruptedException e) {
-            log.error("persist lock error");
-        }
     }
 
     public String getAllConfigsFormatString() {
@@ -253,50 +297,6 @@ public class Configuration {
         }
 
         return null;
-    }
-
-    private String getAllConfigsInternal() {
-        StringBuilder stringBuilder = new StringBuilder();
-
-        // reload from config object ?
-        for (Object configObject : this.configObjectList) {
-            Properties properties = MixAll.object2Properties(configObject);
-            if (properties != null) {
-                merge(properties, this.allConfigs);
-            } else {
-                log.warn("getAllConfigsInternal object2Properties is null, {}", configObject.getClass());
-            }
-        }
-
-        {
-            stringBuilder.append(MixAll.properties2String(this.allConfigs));
-        }
-
-        return stringBuilder.toString();
-    }
-
-    private void merge(Properties from, Properties to) {
-        for (Object key : from.keySet()) {
-            Object fromObj = from.get(key), toObj = to.get(key);
-            if (toObj != null && !toObj.equals(fromObj)) {
-                log.info("Replace, key: {}, value: {} -> {}", key, toObj, fromObj);
-            }
-            to.put(key, fromObj);
-        }
-    }
-
-    private void mergeIfExist(Properties from, Properties to) {
-        for (Object key : from.keySet()) {
-            if (!to.containsKey(key)) {
-                continue;
-            }
-
-            Object fromObj = from.get(key), toObj = to.get(key);
-            if (toObj != null && !toObj.equals(fromObj)) {
-                log.info("Replace, key: {}, value: {} -> {}", key, toObj, fromObj);
-            }
-            to.put(key, fromObj);
-        }
     }
 
 }

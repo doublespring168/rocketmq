@@ -21,9 +21,6 @@ import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import io.netty.channel.ChannelHandlerContext;
-import java.lang.reflect.Field;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
 import org.apache.rocketmq.broker.out.BrokerOuterAPI;
 import org.apache.rocketmq.common.BrokerConfig;
 import org.apache.rocketmq.common.namesrv.RegisterBrokerResult;
@@ -45,11 +42,13 @@ import org.mockito.invocation.InvocationOnMock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.mockito.stubbing.Answer;
 
+import java.lang.reflect.Field;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -74,13 +73,6 @@ public class BrokerOuterAPITest {
 
     private BrokerOuterAPI brokerOuterAPI;
 
-    public void init() throws Exception {
-        brokerOuterAPI = new BrokerOuterAPI(new NettyClientConfig(), null);
-        Field field = BrokerOuterAPI.class.getDeclaredField("remotingClient");
-        field.setAccessible(true);
-        field.set(brokerOuterAPI, nettyRemotingClient);
-    }
-
     @Test
     public void test_needRegister_normal() throws Exception {
         init();
@@ -89,11 +81,27 @@ public class BrokerOuterAPITest {
 
         TopicConfigSerializeWrapper topicConfigSerializeWrapper = new TopicConfigSerializeWrapper();
 
-        when(nettyRemotingClient.getNameServerAddressList()).thenReturn(Lists.asList(nameserver1, nameserver2, new String[] {nameserver3}));
+        when(nettyRemotingClient.getNameServerAddressList()).thenReturn(Lists.asList(nameserver1, nameserver2, new String[]{nameserver3}));
         when(nettyRemotingClient.invokeSync(anyString(), any(RemotingCommand.class), anyLong())).thenReturn(response);
         List<Boolean> booleanList = brokerOuterAPI.needRegister(clusterName, brokerAddr, brokerName, brokerId, topicConfigSerializeWrapper, timeOut);
         assertTrue(booleanList.size() > 0);
         assertEquals(false, booleanList.contains(Boolean.FALSE));
+    }
+
+    public void init() throws Exception {
+        brokerOuterAPI = new BrokerOuterAPI(new NettyClientConfig(), null);
+        Field field = BrokerOuterAPI.class.getDeclaredField("remotingClient");
+        field.setAccessible(true);
+        field.set(brokerOuterAPI, nettyRemotingClient);
+    }
+
+    private RemotingCommand buildResponse(Boolean changed) {
+        final RemotingCommand response = RemotingCommand.createResponseCommand(QueryDataVersionResponseHeader.class);
+        final QueryDataVersionResponseHeader responseHeader = (QueryDataVersionResponseHeader) response.readCustomHeader();
+        response.setCode(ResponseCode.SUCCESS);
+        response.setRemark(null);
+        responseHeader.setChanged(changed);
+        return response;
     }
 
     @Test
@@ -103,7 +111,7 @@ public class BrokerOuterAPITest {
 
         TopicConfigSerializeWrapper topicConfigSerializeWrapper = new TopicConfigSerializeWrapper();
 
-        when(nettyRemotingClient.getNameServerAddressList()).thenReturn(Lists.asList(nameserver1, nameserver2, new String[] {nameserver3}));
+        when(nettyRemotingClient.getNameServerAddressList()).thenReturn(Lists.asList(nameserver1, nameserver2, new String[]{nameserver3}));
 
         when(nettyRemotingClient.invokeSync(anyString(), any(RemotingCommand.class), anyLong())).thenAnswer(new Answer<RemotingCommand>() {
             @Override
@@ -122,11 +130,11 @@ public class BrokerOuterAPITest {
         List<Boolean> booleanList = brokerOuterAPI.needRegister(clusterName, brokerAddr, brokerName, brokerId, topicConfigSerializeWrapper, timeOut);
         assertEquals(2, booleanList.size());
         boolean success = Iterables.any(booleanList,
-            new Predicate<Boolean>() {
-                public boolean apply(Boolean input) {
-                    return input ? true : false;
-                }
-            });
+                new Predicate<Boolean>() {
+                    public boolean apply(Boolean input) {
+                        return input ? true : false;
+                    }
+                });
 
         assertEquals(true, success);
 
@@ -144,7 +152,7 @@ public class BrokerOuterAPITest {
 
         TopicConfigSerializeWrapper topicConfigSerializeWrapper = new TopicConfigSerializeWrapper();
 
-        when(nettyRemotingClient.getNameServerAddressList()).thenReturn(Lists.asList(nameserver1, nameserver2, new String[] {nameserver3}));
+        when(nettyRemotingClient.getNameServerAddressList()).thenReturn(Lists.asList(nameserver1, nameserver2, new String[]{nameserver3}));
         when(nettyRemotingClient.invokeSync(anyString(), any(RemotingCommand.class), anyLong())).thenReturn(response);
         List<RegisterBrokerResult> registerBrokerResultList = brokerOuterAPI.registerBrokerAll(clusterName, brokerAddr, brokerName, brokerId, "hasServerAddr", topicConfigSerializeWrapper, Lists.<String>newArrayList(), false, timeOut, true);
 
@@ -162,7 +170,7 @@ public class BrokerOuterAPITest {
 
         TopicConfigSerializeWrapper topicConfigSerializeWrapper = new TopicConfigSerializeWrapper();
 
-        when(nettyRemotingClient.getNameServerAddressList()).thenReturn(Lists.asList(nameserver1, nameserver2, new String[] {nameserver3}));
+        when(nettyRemotingClient.getNameServerAddressList()).thenReturn(Lists.asList(nameserver1, nameserver2, new String[]{nameserver3}));
         when(nettyRemotingClient.invokeSync(anyString(), any(RemotingCommand.class), anyLong())).thenAnswer(new Answer<RemotingCommand>() {
             @Override
             public RemotingCommand answer(InvocationOnMock invocation) throws Throwable {
@@ -180,14 +188,5 @@ public class BrokerOuterAPITest {
         List<RegisterBrokerResult> registerBrokerResultList = brokerOuterAPI.registerBrokerAll(clusterName, brokerAddr, brokerName, brokerId, "hasServerAddr", topicConfigSerializeWrapper, Lists.<String>newArrayList(), false, timeOut, true);
 
         assertEquals(2, registerBrokerResultList.size());
-    }
-
-    private RemotingCommand buildResponse(Boolean changed) {
-        final RemotingCommand response = RemotingCommand.createResponseCommand(QueryDataVersionResponseHeader.class);
-        final QueryDataVersionResponseHeader responseHeader = (QueryDataVersionResponseHeader) response.readCustomHeader();
-        response.setCode(ResponseCode.SUCCESS);
-        response.setRemark(null);
-        responseHeader.setChanged(changed);
-        return response;
     }
 }

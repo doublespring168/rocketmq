@@ -30,21 +30,9 @@ package org.apache.rocketmq.filter.expression;
  */
 public class ConstantExpression implements Expression {
 
-    static class BooleanConstantExpression extends ConstantExpression implements BooleanExpression {
-        public BooleanConstantExpression(Object value) {
-            super(value);
-        }
-
-        public boolean matches(EvaluationContext context) throws Exception {
-            Object object = evaluate(context);
-            return object != null && object == Boolean.TRUE;
-        }
-    }
-
     public static final BooleanConstantExpression NULL = new BooleanConstantExpression(null);
     public static final BooleanConstantExpression TRUE = new BooleanConstantExpression(Boolean.TRUE);
     public static final BooleanConstantExpression FALSE = new BooleanConstantExpression(Boolean.FALSE);
-
     private Object value;
 
     public ConstantExpression(Object value) {
@@ -93,8 +81,45 @@ public class ConstantExpression implements Expression {
         return value;
     }
 
+    /**
+     * @see Object#hashCode()
+     */
+    public int hashCode() {
+        return toString().hashCode();
+    }
+
     public Object getValue() {
         return value;
+    }
+
+    /**
+     * Encodes the value of string so that it looks like it would look like when
+     * it was provided in a selector.
+     */
+    public static String encodeString(String s) {
+        StringBuffer b = new StringBuffer();
+        b.append('\'');
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c == '\'') {
+                b.append(c);
+            }
+            b.append(c);
+        }
+        b.append('\'');
+        return b.toString();
+    }
+
+    /**
+     * @see Object#equals(Object)
+     */
+    public boolean equals(Object o) {
+
+        if (o == null || !this.getClass().equals(o.getClass())) {
+            return false;
+        }
+        return toString().equals(o.toString());
+
     }
 
     /**
@@ -114,41 +139,15 @@ public class ConstantExpression implements Expression {
         return value.toString();
     }
 
-    /**
-     * @see Object#hashCode()
-     */
-    public int hashCode() {
-        return toString().hashCode();
-    }
-
-    /**
-     * @see Object#equals(Object)
-     */
-    public boolean equals(Object o) {
-
-        if (o == null || !this.getClass().equals(o.getClass())) {
-            return false;
+    static class BooleanConstantExpression extends ConstantExpression implements BooleanExpression {
+        public BooleanConstantExpression(Object value) {
+            super(value);
         }
-        return toString().equals(o.toString());
 
-    }
-
-    /**
-     * Encodes the value of string so that it looks like it would look like when
-     * it was provided in a selector.
-     */
-    public static String encodeString(String s) {
-        StringBuffer b = new StringBuffer();
-        b.append('\'');
-        for (int i = 0; i < s.length(); i++) {
-            char c = s.charAt(i);
-            if (c == '\'') {
-                b.append(c);
-            }
-            b.append(c);
+        public boolean matches(EvaluationContext context) throws Exception {
+            Object object = evaluate(context);
+            return object != null && object == Boolean.TRUE;
         }
-        b.append('\'');
-        return b.toString();
     }
 
 }

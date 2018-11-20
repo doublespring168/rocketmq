@@ -16,8 +16,8 @@
  */
 package io.openmessaging.rocketmq.promise;
 
-import io.openmessaging.Promise;
 import io.openmessaging.FutureListener;
+import io.openmessaging.Promise;
 import io.openmessaging.exception.OMSRuntimeException;
 import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.logging.InternalLoggerFactory;
@@ -44,6 +44,56 @@ public class DefaultPromise<V> implements Promise<V> {
     @Override
     public boolean cancel(final boolean mayInterruptIfRunning) {
         return false;
+    }
+
+    @Override
+    public boolean set(final V value) {
+        if (value == null)
+            return false;
+        this.result = value;
+        return done();
+    }
+
+    @Override
+    public boolean setFailure(final Throwable cause) {
+        if (cause == null)
+            return false;
+        this.exception = cause;
+        return done();
+    }
+
+    private boolean done() {
+        synchronized (lock) {
+            if (!isDoing()) {
+                return false;
+            }
+
+            state = FutureState.DONE;
+            lock.notifyAll();
+        }
+
+        notifyListeners();
+        return true;
+    }
+
+    private boolean isDoing() {
+        return state.isDoingState();
+    }
+
+    private void notifyListeners() {
+        if (promiseListenerList != null) {
+            for (FutureListener<V> listener : promiseListenerList) {
+                notifyListener(listener);
+            }
+        }
+    }
+
+    private void notifyListener(final FutureListener<V> listener) {
+        try {
+            listener.operationComplete(this);
+        } catch (Throwable t) {
+            LOG.error("notifyListener {} Error:{}", listener.getClass().getSimpleName(), t);
+        }
     }
 
     @Override
@@ -105,22 +155,6 @@ public class DefaultPromise<V> implements Promise<V> {
     }
 
     @Override
-    public boolean set(final V value) {
-        if (value == null)
-            return false;
-        this.result = value;
-        return done();
-    }
-
-    @Override
-    public boolean setFailure(final Throwable cause) {
-        if (cause == null)
-            return false;
-        this.exception = cause;
-        return done();
-    }
-
-    @Override
     public void addListener(final FutureListener<V> listener) {
         if (listener == null) {
             throw new NullPointerException("FutureListener is null");
@@ -148,14 +182,6 @@ public class DefaultPromise<V> implements Promise<V> {
         return exception;
     }
 
-    private void notifyListeners() {
-        if (promiseListenerList != null) {
-            for (FutureListener<V> listener : promiseListenerList) {
-                notifyListener(listener);
-            }
-        }
-    }
-
     private boolean isSuccess() {
         return isDone() && (exception == null);
     }
@@ -179,32 +205,6 @@ public class DefaultPromise<V> implements Promise<V> {
         }
         notifyListeners();
         return result;
-    }
-
-    private boolean isDoing() {
-        return state.isDoingState();
-    }
-
-    private boolean done() {
-        synchronized (lock) {
-            if (!isDoing()) {
-                return false;
-            }
-
-            state = FutureState.DONE;
-            lock.notifyAll();
-        }
-
-        notifyListeners();
-        return true;
-    }
-
-    private void notifyListener(final FutureListener<V> listener) {
-        try {
-            listener.operationComplete(this);
-        } catch (Throwable t) {
-            LOG.error("notifyListener {} Error:{}", listener.getClass().getSimpleName(), t);
-        }
     }
 
     private boolean cancel(Exception e) {

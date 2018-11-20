@@ -38,7 +38,7 @@ public class DefaultTransactionalMessageCheckListenerTest {
 
     @Spy
     private BrokerController brokerController = new BrokerController(new BrokerConfig(), new NettyServerConfig(),
-        new NettyClientConfig(), new MessageStoreConfig());
+            new NettyClientConfig(), new MessageStoreConfig());
 
 
     @Before
@@ -52,27 +52,27 @@ public class DefaultTransactionalMessageCheckListenerTest {
         listener.resolveHalfMsg(createMessageExt());
     }
 
-    @Test
-    public void testSendCheckMessage() throws Exception{
-        MessageExt messageExt = createMessageExt();
-        listener.sendCheckMessage(messageExt);
-    }
-
-    @Test
-    public void sendCheckMessage(){
-        listener.resolveDiscardMsg(createMessageExt());
-    }
-
     private MessageExtBrokerInner createMessageExt() {
         MessageExtBrokerInner inner = new MessageExtBrokerInner();
-        MessageAccessor.putProperty(inner,MessageConst.PROPERTY_REAL_QUEUE_ID,"1");
-        MessageAccessor.putProperty(inner,MessageConst.PROPERTY_UNIQ_CLIENT_MESSAGE_ID_KEYIDX,"1234255");
-        MessageAccessor.putProperty(inner,MessageConst.PROPERTY_REAL_TOPIC,"realTopic");
+        MessageAccessor.putProperty(inner, MessageConst.PROPERTY_REAL_QUEUE_ID, "1");
+        MessageAccessor.putProperty(inner, MessageConst.PROPERTY_UNIQ_CLIENT_MESSAGE_ID_KEYIDX, "1234255");
+        MessageAccessor.putProperty(inner, MessageConst.PROPERTY_REAL_TOPIC, "realTopic");
         inner.setTransactionId(inner.getProperty(MessageConst.PROPERTY_UNIQ_CLIENT_MESSAGE_ID_KEYIDX));
         inner.setBody("check".getBytes());
         inner.setMsgId("12344567890");
         inner.setQueueId(0);
         return inner;
+    }
+
+    @Test
+    public void testSendCheckMessage() throws Exception {
+        MessageExt messageExt = createMessageExt();
+        listener.sendCheckMessage(messageExt);
+    }
+
+    @Test
+    public void sendCheckMessage() {
+        listener.resolveDiscardMsg(createMessageExt());
     }
 
 }

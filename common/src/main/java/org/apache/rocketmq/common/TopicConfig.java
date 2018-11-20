@@ -135,6 +135,18 @@ public class TopicConfig {
     }
 
     @Override
+    public int hashCode() {
+        int result = topicName != null ? topicName.hashCode() : 0;
+        result = 31 * result + readQueueNums;
+        result = 31 * result + writeQueueNums;
+        result = 31 * result + perm;
+        result = 31 * result + (topicFilterType != null ? topicFilterType.hashCode() : 0);
+        result = 31 * result + topicSysFlag;
+        result = 31 * result + (order ? 1 : 0);
+        return result;
+    }
+
+    @Override
     public boolean equals(final Object o) {
         if (this == o)
             return true;
@@ -160,22 +172,10 @@ public class TopicConfig {
     }
 
     @Override
-    public int hashCode() {
-        int result = topicName != null ? topicName.hashCode() : 0;
-        result = 31 * result + readQueueNums;
-        result = 31 * result + writeQueueNums;
-        result = 31 * result + perm;
-        result = 31 * result + (topicFilterType != null ? topicFilterType.hashCode() : 0);
-        result = 31 * result + topicSysFlag;
-        result = 31 * result + (order ? 1 : 0);
-        return result;
-    }
-
-    @Override
     public String toString() {
         return "TopicConfig [topicName=" + topicName + ", readQueueNums=" + readQueueNums
-            + ", writeQueueNums=" + writeQueueNums + ", perm=" + PermName.perm2String(perm)
-            + ", topicFilterType=" + topicFilterType + ", topicSysFlag=" + topicSysFlag + ", order="
-            + order + "]";
+                + ", writeQueueNums=" + writeQueueNums + ", perm=" + PermName.perm2String(perm)
+                + ", topicFilterType=" + topicFilterType + ", topicSysFlag=" + topicSysFlag + ", order="
+                + order + "]";
     }
 }

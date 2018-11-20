@@ -25,12 +25,7 @@ import io.openmessaging.rocketmq.config.ClientConfig;
 import io.openmessaging.rocketmq.domain.ConsumeRequest;
 import io.openmessaging.rocketmq.utils.BeanUtils;
 import io.openmessaging.rocketmq.utils.OMSUtil;
-import org.apache.rocketmq.client.consumer.DefaultMQPullConsumer;
-import org.apache.rocketmq.client.consumer.MQPullConsumer;
-import org.apache.rocketmq.client.consumer.MQPullConsumerScheduleService;
-import org.apache.rocketmq.client.consumer.PullResult;
-import org.apache.rocketmq.client.consumer.PullTaskCallback;
-import org.apache.rocketmq.client.consumer.PullTaskContext;
+import org.apache.rocketmq.client.consumer.*;
 import org.apache.rocketmq.client.exception.MQClientException;
 import org.apache.rocketmq.client.impl.consumer.ProcessQueue;
 import org.apache.rocketmq.client.log.ClientLogger;
@@ -40,14 +35,13 @@ import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.remoting.protocol.LanguageCode;
 
 public class PullConsumerImpl implements PullConsumer {
+    private final static InternalLogger log = ClientLogger.getLog();
     private final DefaultMQPullConsumer rocketmqPullConsumer;
     private final KeyValue properties;
-    private boolean started = false;
     private final MQPullConsumerScheduleService pullConsumerScheduleService;
     private final LocalMessageCache localMessageCache;
     private final ClientConfig clientConfig;
-
-    private final static InternalLogger log = ClientLogger.getLog();
+    private boolean started = false;
 
     public PullConsumerImpl(final KeyValue properties) {
         this.properties = properties;
@@ -128,19 +122,6 @@ public class PullConsumerImpl implements PullConsumer {
         localMessageCache.ack(messageId);
     }
 
-    @Override
-    public synchronized void startup() {
-        if (!started) {
-            try {
-                this.pullConsumerScheduleService.start();
-                this.localMessageCache.startup();
-            } catch (MQClientException e) {
-                throw new OMSRuntimeException("-1", e);
-            }
-        }
-        this.started = true;
-    }
-
     private void registerPullTaskCallback(final String targetQueueName) {
         this.pullConsumerScheduleService.registerPullTaskCallback(targetQueueName, new PullTaskCallback() {
             @Override
@@ -150,9 +131,9 @@ public class PullConsumerImpl implements PullConsumer {
                     long offset = localMessageCache.nextPullOffset(mq);
 
                     PullResult pullResult = consumer.pull(mq, "*",
-                        offset, localMessageCache.nextPullBatchNums());
+                            offset, localMessageCache.nextPullBatchNums());
                     ProcessQueue pq = rocketmqPullConsumer.getDefaultMQPullConsumerImpl().getRebalanceImpl()
-                        .getProcessQueueTable().get(mq);
+                            .getProcessQueueTable().get(mq);
                     switch (pullResult.getPullStatus()) {
                         case FOUND:
                             if (pq != null) {
@@ -171,6 +152,19 @@ public class PullConsumerImpl implements PullConsumer {
                 }
             }
         });
+    }
+
+    @Override
+    public synchronized void startup() {
+        if (!started) {
+            try {
+                this.pullConsumerScheduleService.start();
+                this.localMessageCache.startup();
+            } catch (MQClientException e) {
+                throw new OMSRuntimeException("-1", e);
+            }
+        }
+        this.started = true;
     }
 
     @Override

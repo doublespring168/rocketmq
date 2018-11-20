@@ -17,8 +17,6 @@
 
 package org.apache.rocketmq.test.util;
 
-import java.util.HashMap;
-import java.util.Set;
 import org.apache.log4j.Logger;
 import org.apache.rocketmq.common.admin.TopicStatsTable;
 import org.apache.rocketmq.common.protocol.body.ClusterInfo;
@@ -27,17 +25,20 @@ import org.apache.rocketmq.common.subscription.SubscriptionGroupConfig;
 import org.apache.rocketmq.tools.admin.DefaultMQAdminExt;
 import org.apache.rocketmq.tools.command.CommandUtil;
 
+import java.util.HashMap;
+import java.util.Set;
+
 public class MQAdmin {
     private static Logger log = Logger.getLogger(MQAdmin.class);
 
     public static boolean createTopic(String nameSrvAddr, String clusterName, String topic,
-        int queueNum) {
+                                      int queueNum) {
         int defaultWaitTime = 5;
         return createTopic(nameSrvAddr, clusterName, topic, queueNum, defaultWaitTime);
     }
 
     public static boolean createTopic(String nameSrvAddr, String clusterName, String topic,
-        int queueNum, int waitTimeSec) {
+                                      int queueNum, int waitTimeSec) {
         boolean createResult = false;
         DefaultMQAdminExt mqAdminExt = new DefaultMQAdminExt();
         mqAdminExt.setNamesrvAddr(nameSrvAddr);
@@ -82,12 +83,12 @@ public class MQAdmin {
         try {
             mqAdminExt.start();
             Set<String> masterSet = CommandUtil.fetchMasterAddrByClusterName(mqAdminExt,
-                clusterName);
+                    clusterName);
             for (String addr : masterSet) {
                 try {
                     mqAdminExt.createAndUpdateSubscriptionGroupConfig(addr, config);
                     log.info(String.format("create subscription group %s to %s success.\n", consumerId,
-                        addr));
+                            addr));
                 } catch (Exception e) {
                     e.printStackTrace();
                     Thread.sleep(1000 * 1);
@@ -99,20 +100,6 @@ public class MQAdmin {
         }
         mqAdminExt.shutdown();
         return createResult;
-    }
-
-    public static ClusterInfo getCluster(String nameSrvAddr) {
-        DefaultMQAdminExt mqAdminExt = new DefaultMQAdminExt();
-        mqAdminExt.setNamesrvAddr(nameSrvAddr);
-        ClusterInfo clusterInfo = null;
-        try {
-            mqAdminExt.start();
-            clusterInfo = mqAdminExt.examineBrokerClusterInfo();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        mqAdminExt.shutdown();
-        return clusterInfo;
     }
 
     public static boolean isBrokerExist(String ns, String ip) {
@@ -133,6 +120,20 @@ public class MQAdmin {
         return false;
     }
 
+    public static ClusterInfo getCluster(String nameSrvAddr) {
+        DefaultMQAdminExt mqAdminExt = new DefaultMQAdminExt();
+        mqAdminExt.setNamesrvAddr(nameSrvAddr);
+        ClusterInfo clusterInfo = null;
+        try {
+            mqAdminExt.start();
+            clusterInfo = mqAdminExt.examineBrokerClusterInfo();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        mqAdminExt.shutdown();
+        return clusterInfo;
+    }
+
     public void getSubConnection(String nameSrvAddr, String clusterName, String consumerId) {
         boolean createResult = true;
         DefaultMQAdminExt mqAdminExt = new DefaultMQAdminExt();
@@ -142,12 +143,12 @@ public class MQAdmin {
         try {
             mqAdminExt.start();
             Set<String> masterSet = CommandUtil.fetchMasterAddrByClusterName(mqAdminExt,
-                clusterName);
+                    clusterName);
             for (String addr : masterSet) {
                 try {
 
                     System.out.printf("create subscription group %s to %s success.\n", consumerId,
-                        addr);
+                            addr);
                 } catch (Exception e) {
                     e.printStackTrace();
                     Thread.sleep(1000 * 1);

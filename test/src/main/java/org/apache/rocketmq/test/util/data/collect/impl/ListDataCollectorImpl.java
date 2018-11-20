@@ -17,12 +17,9 @@
 
 package org.apache.rocketmq.test.util.data.collect.impl;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
 import org.apache.rocketmq.test.util.data.collect.DataCollector;
+
+import java.util.*;
 
 public class ListDataCollectorImpl implements DataCollector {
 
@@ -39,17 +36,17 @@ public class ListDataCollectorImpl implements DataCollector {
         }
     }
 
-    public Collection<Object> getAllData() {
-        return datas;
-    }
-
     public void resetData() {
         datas.clear();
         unlockIncrement();
     }
 
-    public long getDataSizeWithoutDuplicate() {
-        return getAllDataWithoutDuplicate().size();
+    public Collection<Object> getAllData() {
+        return datas;
+    }
+
+    public Collection<Object> getAllDataWithoutDuplicate() {
+        return new HashSet<Object>(datas);
     }
 
     public synchronized void addData(Object data) {
@@ -59,16 +56,16 @@ public class ListDataCollectorImpl implements DataCollector {
         datas.add(data);
     }
 
+    public long getDataSizeWithoutDuplicate() {
+        return getAllDataWithoutDuplicate().size();
+    }
+
     public long getDataSize() {
         return datas.size();
     }
 
     public boolean isRepeatedData(Object data) {
         return Collections.frequency(datas, data) == 1;
-    }
-
-    public Collection<Object> getAllDataWithoutDuplicate() {
-        return new HashSet<Object>(datas);
     }
 
     public int getRepeatedTimeForData(Object data) {

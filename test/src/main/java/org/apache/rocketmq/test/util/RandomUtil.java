@@ -17,11 +17,7 @@
 
 package org.apache.rocketmq.test.util;
 
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Random;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 public final class RandomUtil {
 
@@ -37,10 +33,10 @@ public final class RandomUtil {
         return rd.nextLong();
     }
 
-    public static long getLongMoreThanZero() {
-        long res = rd.nextLong();
+    public static long getLongMoreThanZeroLessThan(long n) {
+        long res = getLongLessThan(n);
         while (res <= 0) {
-            res = rd.nextLong();
+            res = getLongLessThan(n);
         }
         return res;
     }
@@ -48,14 +44,6 @@ public final class RandomUtil {
     public static long getLongLessThan(long n) {
         long res = rd.nextLong();
         return res % n;
-    }
-
-    public static long getLongMoreThanZeroLessThan(long n) {
-        long res = getLongLessThan(n);
-        while (res <= 0) {
-            res = getLongLessThan(n);
-        }
-        return res;
     }
 
     public static long getLongBetween(long n, long m) {
@@ -66,16 +54,16 @@ public final class RandomUtil {
         return n + res % (m - n);
     }
 
-    public static int getInteger() {
-        return rd.nextInt();
-    }
-
-    public static int getIntegerMoreThanZero() {
-        int res = rd.nextInt();
+    public static long getLongMoreThanZero() {
+        long res = rd.nextLong();
         while (res <= 0) {
-            res = rd.nextInt();
+            res = rd.nextLong();
         }
         return res;
+    }
+
+    public static int getInteger() {
+        return rd.nextInt();
     }
 
     public static int getIntegerLessThan(int n) {
@@ -83,12 +71,24 @@ public final class RandomUtil {
         return res % n;
     }
 
-    public static int getIntegerMoreThanZeroLessThan(int n) {
-        int res = rd.nextInt(n);
-        while (res == 0) {
-            res = rd.nextInt(n);
+    public static String getStringWithNumber(int n) {
+        int arg[] = new int[]{'0', '9' + 1};
+        return getString(n, arg);
+    }
+
+    private static String getString(int n, int arg[]) {
+        StringBuilder res = new StringBuilder();
+        for (int i = 0; i < n; i++) {
+            res.append(getChar(arg));
         }
-        return res;
+        return res.toString();
+    }
+
+    private static char getChar(int arg[]) {
+        int size = arg.length;
+        int c = rd.nextInt(size / 2);
+        c = c * 2;
+        return (char) (getIntegerBetween(arg[c], arg[c + 1]));
     }
 
     public static int getIntegerBetween(int n, int m)// m��ֵ����Ϊ���أ�
@@ -100,34 +100,12 @@ public final class RandomUtil {
         return n + res % (m - n);
     }
 
-    private static char getChar(int arg[]) {
-        int size = arg.length;
-        int c = rd.nextInt(size / 2);
-        c = c * 2;
-        return (char) (getIntegerBetween(arg[c], arg[c + 1]));
-    }
-
-    private static String getString(int n, int arg[]) {
-        StringBuilder res = new StringBuilder();
-        for (int i = 0; i < n; i++) {
-            res.append(getChar(arg));
+    public static int getIntegerMoreThanZero() {
+        int res = rd.nextInt();
+        while (res <= 0) {
+            res = rd.nextInt();
         }
-        return res.toString();
-    }
-
-    public static String getStringWithCharacter(int n) {
-        int arg[] = new int[] {'a', 'z' + 1, 'A', 'Z' + 1};
-        return getString(n, arg);
-    }
-
-    public static String getStringWithNumber(int n) {
-        int arg[] = new int[] {'0', '9' + 1};
-        return getString(n, arg);
-    }
-
-    public static String getStringWithNumAndCha(int n) {
-        int arg[] = new int[] {'a', 'z' + 1, 'A', 'Z' + 1, '0', '9' + 1};
-        return getString(n, arg);
+        return res;
     }
 
     public static String getStringShortenThan(int n) {
@@ -135,9 +113,27 @@ public final class RandomUtil {
         return getStringWithCharacter(len);
     }
 
+    public static int getIntegerMoreThanZeroLessThan(int n) {
+        int res = rd.nextInt(n);
+        while (res == 0) {
+            res = rd.nextInt(n);
+        }
+        return res;
+    }
+
+    public static String getStringWithCharacter(int n) {
+        int arg[] = new int[]{'a', 'z' + 1, 'A', 'Z' + 1};
+        return getString(n, arg);
+    }
+
     public static String getStringWithNumAndChaShortenThan(int n) {
         int len = getIntegerMoreThanZeroLessThan(n);
         return getStringWithNumAndCha(len);
+    }
+
+    public static String getStringWithNumAndCha(int n) {
+        int arg[] = new int[]{'a', 'z' + 1, 'A', 'Z' + 1, '0', '9' + 1};
+        return getString(n, arg);
     }
 
     public static String getStringBetween(int n, int m) {
@@ -201,6 +197,19 @@ public final class RandomUtil {
         }
     }
 
+    public static String getCheseWord(int len) {
+        StringBuilder res = new StringBuilder();
+        for (int i = 0; i < len; i++) {
+            char str = getCheseChar();
+            res.append(str);
+        }
+        return res.toString();
+    }
+
+    private static char getCheseChar() {
+        return (char) (UNICODE_START + rd.nextInt(UNICODE_END - UNICODE_START));
+    }
+
     public static String getCheseWordWithSuffix(int n, String suffix) {
 
         int len = suffix.length();
@@ -226,19 +235,6 @@ public final class RandomUtil {
             res.append(suffix);
             return res.toString();
         }
-    }
-
-    public static String getCheseWord(int len) {
-        StringBuilder res = new StringBuilder();
-        for (int i = 0; i < len; i++) {
-            char str = getCheseChar();
-            res.append(str);
-        }
-        return res.toString();
-    }
-
-    private static char getCheseChar() {
-        return (char) (UNICODE_START + rd.nextInt(UNICODE_END - UNICODE_START));
     }
 
     public static boolean getBoolean() {

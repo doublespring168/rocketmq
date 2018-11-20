@@ -30,19 +30,13 @@ public abstract class Appender {
     public static final int CODE_FILE_OPEN_FAILURE = 4;
 
     public final static String LINE_SEP = System.getProperty("line.separator");
-
-    boolean firstTime = true;
-
     protected Layout layout;
-
     protected String name;
-
     protected boolean closed = false;
+    boolean firstTime = true;
 
     public void activateOptions() {
     }
-
-    abstract protected void append(LoggingEvent event);
 
     public void finalize() {
         try {
@@ -58,12 +52,22 @@ public abstract class Appender {
         close();
     }
 
+    public abstract void close();
+
     public Layout getLayout() {
         return layout;
     }
 
+    public void setLayout(Layout layout) {
+        this.layout = layout;
+    }
+
     public final String getName() {
         return this.name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 
     public synchronized void doAppend(LoggingEvent event) {
@@ -74,15 +78,7 @@ public abstract class Appender {
         this.append(event);
     }
 
-    public void setLayout(Layout layout) {
-        this.layout = layout;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public abstract void close();
+    abstract protected void append(LoggingEvent event);
 
     public void handleError(String message, Exception e, int errorCode) {
         if (e instanceof InterruptedIOException || e instanceof InterruptedException) {
@@ -136,20 +132,6 @@ public abstract class Appender {
             if (!appenderList.contains(newAppender)) {
                 appenderList.addElement(newAppender);
             }
-        }
-
-        public int appendLoopOnAppenders(LoggingEvent event) {
-            int size = 0;
-            Appender appender;
-
-            if (appenderList != null) {
-                size = appenderList.size();
-                for (int i = 0; i < size; i++) {
-                    appender = appenderList.elementAt(i);
-                    appender.doAppend(event);
-                }
-            }
-            return size;
         }
 
         public Enumeration getAllAppenders() {
@@ -222,6 +204,20 @@ public abstract class Appender {
                     break;
                 }
             }
+        }
+
+        public int appendLoopOnAppenders(LoggingEvent event) {
+            int size = 0;
+            Appender appender;
+
+            if (appenderList != null) {
+                size = appenderList.size();
+                for (int i = 0; i < size; i++) {
+                    appender = appenderList.elementAt(i);
+                    appender.doAppend(event);
+                }
+            }
+            return size;
         }
 
     }

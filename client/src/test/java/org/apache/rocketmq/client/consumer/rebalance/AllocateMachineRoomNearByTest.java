@@ -16,18 +16,13 @@
  */
 package org.apache.rocketmq.client.consumer.rebalance;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.TreeSet;
 import org.apache.rocketmq.client.consumer.AllocateMessageQueueStrategy;
 import org.apache.rocketmq.common.message.MessageQueue;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.util.*;
 
 
 public class AllocateMachineRoomNearByTest {
@@ -35,12 +30,14 @@ public class AllocateMachineRoomNearByTest {
     private static final String CID_PREFIX = "CID-";
 
     private final String topic = "topic_test";
-    private final AllocateMachineRoomNearby.MachineRoomResolver machineRoomResolver =  new AllocateMachineRoomNearby.MachineRoomResolver() {
-        @Override public String brokerDeployIn(MessageQueue messageQueue) {
+    private final AllocateMachineRoomNearby.MachineRoomResolver machineRoomResolver = new AllocateMachineRoomNearby.MachineRoomResolver() {
+        @Override
+        public String brokerDeployIn(MessageQueue messageQueue) {
             return messageQueue.getBrokerName().split("-")[0];
         }
 
-        @Override public String consumerDeployIn(String clientID) {
+        @Override
+        public String consumerDeployIn(String clientID) {
             return clientID.split("-")[0];
         }
     };
@@ -54,81 +51,91 @@ public class AllocateMachineRoomNearByTest {
 
     @Test
     public void test1() {
-        testWhenIDCSizeEquals(5,20,10, false);
-        testWhenIDCSizeEquals(5,20,20, false);
-        testWhenIDCSizeEquals(5,20,30, false);
-        testWhenIDCSizeEquals(5,20,0, false );
+        testWhenIDCSizeEquals(5, 20, 10, false);
+        testWhenIDCSizeEquals(5, 20, 20, false);
+        testWhenIDCSizeEquals(5, 20, 30, false);
+        testWhenIDCSizeEquals(5, 20, 0, false);
     }
-
-    @Test
-    public void test2() {
-        testWhenConsumerIDCIsMore(5,1,10, 10, false);
-        testWhenConsumerIDCIsMore(5,1,10, 5, false);
-        testWhenConsumerIDCIsMore(5,1,10, 20, false);
-        testWhenConsumerIDCIsMore(5,1,10, 0, false);
-    }
-
-    @Test
-    public void test3() {
-        testWhenConsumerIDCIsLess(5,2,10, 10, false);
-        testWhenConsumerIDCIsLess(5,2,10, 5, false);
-        testWhenConsumerIDCIsLess(5,2,10, 20, false);
-        testWhenConsumerIDCIsLess(5,2,10, 0, false);
-    }
-
-
-    @Test
-    public void testRun10RandomCase(){
-        for(int i=0;i<10;i++){
-            int consumerSize = new Random().nextInt(200)+1;//1-200
-            int queueSize = new Random().nextInt(100)+1;//1-100
-            int brokerIDCSize = new Random().nextInt(10)+1;//1-10
-            int consumerIDCSize = new Random().nextInt(10)+1;//1-10
-
-            if (brokerIDCSize == consumerIDCSize) {
-                testWhenIDCSizeEquals(brokerIDCSize,queueSize,consumerSize,false);
-            }
-            else if (brokerIDCSize > consumerIDCSize) {
-                testWhenConsumerIDCIsLess(brokerIDCSize,brokerIDCSize- consumerIDCSize, queueSize, consumerSize, false);
-            } else {
-                testWhenConsumerIDCIsMore(brokerIDCSize, consumerIDCSize - brokerIDCSize, queueSize, consumerSize, false);
-            }
-        }
-    }
-
-
-
 
     public void testWhenIDCSizeEquals(int IDCSize, int queueSize, int consumerSize, boolean print) {
         if (print) {
-            System.out.println("Test : IDCSize = "+ IDCSize +"queueSize = " + queueSize +" consumerSize = " + consumerSize);
+            System.out.println("Test : IDCSize = " + IDCSize + "queueSize = " + queueSize + " consumerSize = " + consumerSize);
         }
         List<String> cidAll = prepareConsumer(IDCSize, consumerSize);
         List<MessageQueue> mqAll = prepareMQ(IDCSize, queueSize);
         List<MessageQueue> resAll = new ArrayList<MessageQueue>();
         for (String currentID : cidAll) {
-            List<MessageQueue> res = allocateMessageQueueStrategy.allocate("Test-C-G",currentID,mqAll,cidAll);
+            List<MessageQueue> res = allocateMessageQueueStrategy.allocate("Test-C-G", currentID, mqAll, cidAll);
             if (print) {
-                System.out.println("cid: "+currentID+"--> res :" +res);
+                System.out.println("cid: " + currentID + "--> res :" + res);
             }
             for (MessageQueue mq : res) {
                 Assert.assertTrue(machineRoomResolver.brokerDeployIn(mq).equals(machineRoomResolver.consumerDeployIn(currentID)));
             }
             resAll.addAll(res);
         }
-        Assert.assertTrue(hasAllocateAllQ(cidAll,mqAll,resAll));
+        Assert.assertTrue(hasAllocateAllQ(cidAll, mqAll, resAll));
 
         if (print) {
             System.out.println("-------------------------------------------------------------------");
         }
     }
 
+    private List<String> prepareConsumer(int IDCSize, int consumerSize) {
+        List<String> cidAll = new ArrayList<String>();
+        for (int i = 1; i <= IDCSize; i++) {
+            cidAll.addAll(createConsumerIdList("IDC" + i, consumerSize));
+        }
+        return cidAll;
+    }
+
+    private List<MessageQueue> prepareMQ(int brokerIDCSize, int queueSize) {
+        List<MessageQueue> mqAll = new ArrayList<MessageQueue>();
+        for (int i = 1; i <= brokerIDCSize; i++) {
+            mqAll.addAll(createMessageQueueList("IDC" + i, queueSize));
+        }
+
+        return mqAll;
+    }
+
+    private boolean hasAllocateAllQ(List<String> cidAll, List<MessageQueue> mqAll, List<MessageQueue> allocatedResAll) {
+        if (cidAll.isEmpty()) {
+            return allocatedResAll.isEmpty();
+        }
+        return mqAll.containsAll(allocatedResAll) && allocatedResAll.containsAll(mqAll) && mqAll.size() == allocatedResAll.size();
+    }
+
+    private List<String> createConsumerIdList(String machineRoom, int size) {
+        List<String> consumerIdList = new ArrayList<String>(size);
+        for (int i = 0; i < size; i++) {
+            consumerIdList.add(machineRoom + "-" + CID_PREFIX + String.valueOf(i));
+        }
+        return consumerIdList;
+    }
+
+    private List<MessageQueue> createMessageQueueList(String machineRoom, int size) {
+        List<MessageQueue> messageQueueList = new ArrayList<MessageQueue>(size);
+        for (int i = 0; i < size; i++) {
+            MessageQueue mq = new MessageQueue(topic, machineRoom + "-brokerName", i);
+            messageQueueList.add(mq);
+        }
+        return messageQueueList;
+    }
+
+    @Test
+    public void test2() {
+        testWhenConsumerIDCIsMore(5, 1, 10, 10, false);
+        testWhenConsumerIDCIsMore(5, 1, 10, 5, false);
+        testWhenConsumerIDCIsMore(5, 1, 10, 20, false);
+        testWhenConsumerIDCIsMore(5, 1, 10, 0, false);
+    }
+
     public void testWhenConsumerIDCIsMore(int brokerIDCSize, int consumerMore, int queueSize, int consumerSize, boolean print) {
         if (print) {
-            System.out.println("Test : IDCSize = "+ brokerIDCSize +" queueSize = " + queueSize +" consumerSize = " + consumerSize);
+            System.out.println("Test : IDCSize = " + brokerIDCSize + " queueSize = " + queueSize + " consumerSize = " + consumerSize);
         }
         Set<String> brokerIDCWithConsumer = new TreeSet<String>();
-        List<String> cidAll = prepareConsumer(brokerIDCSize +consumerMore, consumerSize);
+        List<String> cidAll = prepareConsumer(brokerIDCSize + consumerMore, consumerSize);
         List<MessageQueue> mqAll = prepareMQ(brokerIDCSize, queueSize);
         for (MessageQueue mq : mqAll) {
             brokerIDCWithConsumer.add(machineRoomResolver.brokerDeployIn(mq));
@@ -136,9 +143,9 @@ public class AllocateMachineRoomNearByTest {
 
         List<MessageQueue> resAll = new ArrayList<MessageQueue>();
         for (String currentID : cidAll) {
-            List<MessageQueue> res = allocateMessageQueueStrategy.allocate("Test-C-G",currentID,mqAll,cidAll);
+            List<MessageQueue> res = allocateMessageQueueStrategy.allocate("Test-C-G", currentID, mqAll, cidAll);
             if (print) {
-                System.out.println("cid: "+currentID+"--> res :" +res);
+                System.out.println("cid: " + currentID + "--> res :" + res);
             }
             for (MessageQueue mq : res) {
                 if (brokerIDCWithConsumer.contains(machineRoomResolver.brokerDeployIn(mq))) {//healthy idc, so only consumer in this idc should be allocated
@@ -148,15 +155,23 @@ public class AllocateMachineRoomNearByTest {
             resAll.addAll(res);
         }
 
-        Assert.assertTrue(hasAllocateAllQ(cidAll,mqAll,resAll));
+        Assert.assertTrue(hasAllocateAllQ(cidAll, mqAll, resAll));
         if (print) {
             System.out.println("-------------------------------------------------------------------");
         }
     }
 
+    @Test
+    public void test3() {
+        testWhenConsumerIDCIsLess(5, 2, 10, 10, false);
+        testWhenConsumerIDCIsLess(5, 2, 10, 5, false);
+        testWhenConsumerIDCIsLess(5, 2, 10, 20, false);
+        testWhenConsumerIDCIsLess(5, 2, 10, 0, false);
+    }
+
     public void testWhenConsumerIDCIsLess(int brokerIDCSize, int consumerIDCLess, int queueSize, int consumerSize, boolean print) {
         if (print) {
-            System.out.println("Test : IDCSize = "+ brokerIDCSize +" queueSize = " + queueSize +" consumerSize = " + consumerSize);
+            System.out.println("Test : IDCSize = " + brokerIDCSize + " queueSize = " + queueSize + " consumerSize = " + consumerSize);
         }
         Set<String> healthyIDC = new TreeSet<String>();
         List<String> cidAll = prepareConsumer(brokerIDCSize - consumerIDCLess, consumerSize);
@@ -169,11 +184,11 @@ public class AllocateMachineRoomNearByTest {
         Map<String, List<MessageQueue>> idc2Res = new TreeMap<String, List<MessageQueue>>();
         for (String currentID : cidAll) {
             String currentIDC = machineRoomResolver.consumerDeployIn(currentID);
-            List<MessageQueue> res = allocateMessageQueueStrategy.allocate("Test-C-G",currentID,mqAll,cidAll);
+            List<MessageQueue> res = allocateMessageQueueStrategy.allocate("Test-C-G", currentID, mqAll, cidAll);
             if (print) {
-                System.out.println("cid: "+currentID+"--> res :" +res);
+                System.out.println("cid: " + currentID + "--> res :" + res);
             }
-            if ( !idc2Res.containsKey(currentIDC)) {
+            if (!idc2Res.containsKey(currentIDC)) {
                 idc2Res.put(currentIDC, new ArrayList<MessageQueue>());
             }
             idc2Res.get(currentIDC).addAll(res);
@@ -182,56 +197,31 @@ public class AllocateMachineRoomNearByTest {
 
         for (String consumerIDC : healthyIDC) {
             List<MessageQueue> resInOneIDC = idc2Res.get(consumerIDC);
-            List<MessageQueue> mqInThisIDC = createMessageQueueList(consumerIDC,queueSize);
+            List<MessageQueue> mqInThisIDC = createMessageQueueList(consumerIDC, queueSize);
             Assert.assertTrue(resInOneIDC.containsAll(mqInThisIDC));
         }
 
-        Assert.assertTrue(hasAllocateAllQ(cidAll,mqAll,resAll));
+        Assert.assertTrue(hasAllocateAllQ(cidAll, mqAll, resAll));
         if (print) {
             System.out.println("-------------------------------------------------------------------");
         }
     }
 
+    @Test
+    public void testRun10RandomCase() {
+        for (int i = 0; i < 10; i++) {
+            int consumerSize = new Random().nextInt(200) + 1;//1-200
+            int queueSize = new Random().nextInt(100) + 1;//1-100
+            int brokerIDCSize = new Random().nextInt(10) + 1;//1-10
+            int consumerIDCSize = new Random().nextInt(10) + 1;//1-10
 
-    private boolean hasAllocateAllQ(List<String> cidAll,List<MessageQueue> mqAll, List<MessageQueue> allocatedResAll) {
-        if (cidAll.isEmpty()){
-            return allocatedResAll.isEmpty();
+            if (brokerIDCSize == consumerIDCSize) {
+                testWhenIDCSizeEquals(brokerIDCSize, queueSize, consumerSize, false);
+            } else if (brokerIDCSize > consumerIDCSize) {
+                testWhenConsumerIDCIsLess(brokerIDCSize, brokerIDCSize - consumerIDCSize, queueSize, consumerSize, false);
+            } else {
+                testWhenConsumerIDCIsMore(brokerIDCSize, consumerIDCSize - brokerIDCSize, queueSize, consumerSize, false);
+            }
         }
-        return mqAll.containsAll(allocatedResAll) && allocatedResAll.containsAll(mqAll) && mqAll.size() == allocatedResAll.size();
-    }
-
-
-    private List<String> createConsumerIdList(String machineRoom, int size) {
-        List<String> consumerIdList = new ArrayList<String>(size);
-        for (int i = 0; i < size; i++) {
-            consumerIdList.add(machineRoom +"-"+CID_PREFIX + String.valueOf(i));
-        }
-        return consumerIdList;
-    }
-
-    private List<MessageQueue> createMessageQueueList(String machineRoom, int size) {
-        List<MessageQueue> messageQueueList = new ArrayList<MessageQueue>(size);
-        for (int i = 0; i < size; i++) {
-            MessageQueue mq = new MessageQueue(topic, machineRoom+"-brokerName", i);
-            messageQueueList.add(mq);
-        }
-        return messageQueueList;
-    }
-
-    private List<MessageQueue> prepareMQ(int brokerIDCSize, int queueSize) {
-        List<MessageQueue> mqAll = new ArrayList<MessageQueue>();
-        for (int i=1;i<=brokerIDCSize;i++) {
-            mqAll.addAll(createMessageQueueList("IDC"+i, queueSize));
-        }
-
-        return mqAll;
-    }
-
-    private List<String> prepareConsumer( int IDCSize, int consumerSize) {
-        List<String> cidAll = new ArrayList<String>();
-        for (int i=1;i<=IDCSize;i++) {
-            cidAll.addAll(createConsumerIdList("IDC"+i, consumerSize));
-        }
-        return cidAll;
     }
 }

@@ -17,13 +17,20 @@
 
 package org.apache.rocketmq.common;
 
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.rocketmq.common.message.Message;
 import org.apache.rocketmq.common.message.MessageBatch;
 import org.junit.Test;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class MessageBatchTest {
+
+    @Test
+    public void testGenerate_OK() throws Exception {
+        List<Message> messages = generateMessages();
+        MessageBatch.generateFromList(messages);
+    }
 
     public List<Message> generateMessages() {
         List<Message> messages = new ArrayList<Message>();
@@ -33,12 +40,6 @@ public class MessageBatchTest {
         messages.add(message1);
         messages.add(message2);
         return messages;
-    }
-
-    @Test
-    public void testGenerate_OK() throws Exception {
-        List<Message> messages = generateMessages();
-        MessageBatch.generateFromList(messages);
     }
 
     @Test(expected = UnsupportedOperationException.class)

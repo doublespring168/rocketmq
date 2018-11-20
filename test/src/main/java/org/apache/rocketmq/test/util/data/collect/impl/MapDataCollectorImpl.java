@@ -17,6 +17,8 @@
 
 package org.apache.rocketmq.test.util.data.collect.impl;
 
+import org.apache.rocketmq.test.util.data.collect.DataCollector;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -24,7 +26,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.rocketmq.test.util.data.collect.DataCollector;
 
 public class MapDataCollectorImpl implements DataCollector {
 
@@ -41,15 +42,9 @@ public class MapDataCollectorImpl implements DataCollector {
         }
     }
 
-    public synchronized void addData(Object data) {
-        if (lock) {
-            return;
-        }
-        if (datas.containsKey(data)) {
-            datas.get(data).addAndGet(1);
-        } else {
-            datas.put(data, new AtomicInteger(1));
-        }
+    public void resetData() {
+        datas.clear();
+        unlockIncrement();
     }
 
     public Collection<Object> getAllData() {
@@ -62,13 +57,23 @@ public class MapDataCollectorImpl implements DataCollector {
         return lst;
     }
 
-    public long getDataSizeWithoutDuplicate() {
-        return datas.keySet().size();
+    public Collection<Object> getAllDataWithoutDuplicate() {
+        return datas.keySet();
     }
 
-    public void resetData() {
-        datas.clear();
-        unlockIncrement();
+    public synchronized void addData(Object data) {
+        if (lock) {
+            return;
+        }
+        if (datas.containsKey(data)) {
+            datas.get(data).addAndGet(1);
+        } else {
+            datas.put(data, new AtomicInteger(1));
+        }
+    }
+
+    public long getDataSizeWithoutDuplicate() {
+        return datas.keySet().size();
     }
 
     public long getDataSize() {
@@ -84,10 +89,6 @@ public class MapDataCollectorImpl implements DataCollector {
             return datas.get(data).get() == 1;
         }
         return false;
-    }
-
-    public Collection<Object> getAllDataWithoutDuplicate() {
-        return datas.keySet();
     }
 
     public int getRepeatedTimeForData(Object data) {

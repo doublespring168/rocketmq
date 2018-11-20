@@ -26,20 +26,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class BitsArrayTest {
 
-    BitsArray gen(int bitCount) {
-        BitsArray bitsArray = BitsArray.create(bitCount);
-
-        for (int i = 0; i < bitCount / Byte.SIZE; i++) {
-            bitsArray.setByte(i, (byte) (new Random(System.currentTimeMillis())).nextInt(0xff));
-            try {
-                Thread.sleep(2);
-            } catch (InterruptedException e) {
-            }
-        }
-
-        return bitsArray;
-    }
-
     int bitLength = Byte.SIZE;
 
     @Test
@@ -69,6 +55,20 @@ public class BitsArrayTest {
         bitsArray.xor(backUp);
 
         assertThat(bitsArray.getBit(2)).isTrue();
+    }
+
+    BitsArray gen(int bitCount) {
+        BitsArray bitsArray = BitsArray.create(bitCount);
+
+        for (int i = 0; i < bitCount / Byte.SIZE; i++) {
+            bitsArray.setByte(i, (byte) (new Random(System.currentTimeMillis())).nextInt(0xff));
+            try {
+                Thread.sleep(2);
+            } catch (InterruptedException e) {
+            }
+        }
+
+        return bitsArray;
     }
 
     @Test
@@ -111,8 +111,8 @@ public class BitsArrayTest {
 
     @Test
     public void testOr() {
-        BitsArray b1 = BitsArray.create(new byte[] {(byte) 0xff, 0x00});
-        BitsArray b2 = BitsArray.create(new byte[] {0x00, (byte) 0xff});
+        BitsArray b1 = BitsArray.create(new byte[]{(byte) 0xff, 0x00});
+        BitsArray b2 = BitsArray.create(new byte[]{0x00, (byte) 0xff});
 
         b1.or(b2);
 

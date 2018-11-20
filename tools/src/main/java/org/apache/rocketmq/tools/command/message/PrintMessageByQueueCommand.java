@@ -17,13 +17,6 @@
 
 package org.apache.rocketmq.tools.command.message;
 
-import java.io.UnsupportedEncodingException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
@@ -38,68 +31,11 @@ import org.apache.rocketmq.remoting.RPCHook;
 import org.apache.rocketmq.tools.command.SubCommand;
 import org.apache.rocketmq.tools.command.SubCommandException;
 
+import java.io.UnsupportedEncodingException;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
+
 public class PrintMessageByQueueCommand implements SubCommand {
-
-    public static long timestampFormat(final String value) {
-        long timestamp = 0;
-        try {
-            timestamp = Long.parseLong(value);
-        } catch (NumberFormatException e) {
-
-            timestamp = UtilAll.parseDate(value, UtilAll.YYYY_MM_DD_HH_MM_SS_SSS).getTime();
-        }
-
-        return timestamp;
-    }
-
-    private static void calculateByTag(final List<MessageExt> msgs, final Map<String, AtomicLong> tagCalmap,
-        final boolean calByTag) {
-        if (!calByTag)
-            return;
-
-        for (MessageExt msg : msgs) {
-            String tag = msg.getTags();
-            if (StringUtils.isNotBlank(tag)) {
-                AtomicLong count = tagCalmap.get(tag);
-                if (count == null) {
-                    count = new AtomicLong();
-                    tagCalmap.put(tag, count);
-                }
-                count.incrementAndGet();
-            }
-        }
-    }
-
-    private static void printCalculateByTag(final Map<String, AtomicLong> tagCalmap, final boolean calByTag) {
-        if (!calByTag)
-            return;
-
-        List<TagCountBean> list = new ArrayList<TagCountBean>();
-        for (Map.Entry<String, AtomicLong> entry : tagCalmap.entrySet()) {
-            TagCountBean tagBean = new TagCountBean(entry.getKey(), entry.getValue());
-            list.add(tagBean);
-        }
-        Collections.sort(list);
-
-        for (TagCountBean tagCountBean : list) {
-            System.out.printf("Tag: %-30s Count: %s%n", tagCountBean.getTag(), tagCountBean.getCount());
-        }
-    }
-
-    public static void printMessage(final List<MessageExt> msgs, final String charsetName, boolean printMsg,
-        boolean printBody) {
-        if (!printMsg)
-            return;
-
-        for (MessageExt msg : msgs) {
-            try {
-                System.out.printf("MSGID: %s %s BODY: %s%n", msg.getMsgId(), msg.toString(),
-                    printBody ? new String(msg.getBody(), charsetName) : "NOT PRINT BODY");
-            } catch (UnsupportedEncodingException e) {
-                e.printStackTrace();
-            }
-        }
-    }
 
     @Override
     public String commandName() {
@@ -162,15 +98,15 @@ public class PrintMessageByQueueCommand implements SubCommand {
 
         try {
             String charsetName =
-                !commandLine.hasOption('c') ? "UTF-8" : commandLine.getOptionValue('c').trim();
+                    !commandLine.hasOption('c') ? "UTF-8" : commandLine.getOptionValue('c').trim();
             boolean printMsg =
-                commandLine.hasOption('p') && Boolean.parseBoolean(commandLine.getOptionValue('p').trim());
+                    commandLine.hasOption('p') && Boolean.parseBoolean(commandLine.getOptionValue('p').trim());
             boolean printBody =
-                commandLine.hasOption('d') && Boolean.parseBoolean(commandLine.getOptionValue('d').trim());
+                    commandLine.hasOption('d') && Boolean.parseBoolean(commandLine.getOptionValue('d').trim());
             boolean calByTag =
-                commandLine.hasOption('f') && Boolean.parseBoolean(commandLine.getOptionValue('f').trim());
+                    commandLine.hasOption('f') && Boolean.parseBoolean(commandLine.getOptionValue('f').trim());
             String subExpression =
-                !commandLine.hasOption('s') ? "*" : commandLine.getOptionValue('s').trim();
+                    !commandLine.hasOption('s') ? "*" : commandLine.getOptionValue('s').trim();
 
             String topic = commandLine.getOptionValue('t').trim();
             String brokerName = commandLine.getOptionValue('a').trim();
@@ -223,6 +159,67 @@ public class PrintMessageByQueueCommand implements SubCommand {
         }
     }
 
+    public static long timestampFormat(final String value) {
+        long timestamp = 0;
+        try {
+            timestamp = Long.parseLong(value);
+        } catch (NumberFormatException e) {
+
+            timestamp = UtilAll.parseDate(value, UtilAll.YYYY_MM_DD_HH_MM_SS_SSS).getTime();
+        }
+
+        return timestamp;
+    }
+
+    private static void calculateByTag(final List<MessageExt> msgs, final Map<String, AtomicLong> tagCalmap,
+                                       final boolean calByTag) {
+        if (!calByTag)
+            return;
+
+        for (MessageExt msg : msgs) {
+            String tag = msg.getTags();
+            if (StringUtils.isNotBlank(tag)) {
+                AtomicLong count = tagCalmap.get(tag);
+                if (count == null) {
+                    count = new AtomicLong();
+                    tagCalmap.put(tag, count);
+                }
+                count.incrementAndGet();
+            }
+        }
+    }
+
+    public static void printMessage(final List<MessageExt> msgs, final String charsetName, boolean printMsg,
+                                    boolean printBody) {
+        if (!printMsg)
+            return;
+
+        for (MessageExt msg : msgs) {
+            try {
+                System.out.printf("MSGID: %s %s BODY: %s%n", msg.getMsgId(), msg.toString(),
+                        printBody ? new String(msg.getBody(), charsetName) : "NOT PRINT BODY");
+            } catch (UnsupportedEncodingException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private static void printCalculateByTag(final Map<String, AtomicLong> tagCalmap, final boolean calByTag) {
+        if (!calByTag)
+            return;
+
+        List<TagCountBean> list = new ArrayList<TagCountBean>();
+        for (Map.Entry<String, AtomicLong> entry : tagCalmap.entrySet()) {
+            TagCountBean tagBean = new TagCountBean(entry.getKey(), entry.getValue());
+            list.add(tagBean);
+        }
+        Collections.sort(list);
+
+        for (TagCountBean tagCountBean : list) {
+            System.out.printf("Tag: %-30s Count: %s%n", tagCountBean.getTag(), tagCountBean.getCount());
+        }
+    }
+
     static class TagCountBean implements Comparable<TagCountBean> {
         private String tag;
         private AtomicLong count;
@@ -240,17 +237,17 @@ public class PrintMessageByQueueCommand implements SubCommand {
             this.tag = tag;
         }
 
+        @Override
+        public int compareTo(final TagCountBean o) {
+            return (int) (o.getCount().get() - this.count.get());
+        }
+
         public AtomicLong getCount() {
             return count;
         }
 
         public void setCount(final AtomicLong count) {
             this.count = count;
-        }
-
-        @Override
-        public int compareTo(final TagCountBean o) {
-            return (int) (o.getCount().get() - this.count.get());
         }
     }
 }

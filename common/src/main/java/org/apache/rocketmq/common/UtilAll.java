@@ -16,6 +16,11 @@
  */
 package org.apache.rocketmq.common;
 
+import org.apache.rocketmq.common.constant.LoggerName;
+import org.apache.rocketmq.logging.InternalLogger;
+import org.apache.rocketmq.logging.InternalLoggerFactory;
+import org.apache.rocketmq.remoting.common.RemotingHelper;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -28,27 +33,17 @@ import java.net.NetworkInterface;
 import java.text.NumberFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.Enumeration;
-import java.util.Iterator;
-import java.util.Map;
+import java.util.*;
 import java.util.zip.CRC32;
 import java.util.zip.DeflaterOutputStream;
 import java.util.zip.InflaterInputStream;
 
-import org.apache.rocketmq.common.constant.LoggerName;
-import org.apache.rocketmq.logging.InternalLogger;
-import org.apache.rocketmq.logging.InternalLoggerFactory;
-import org.apache.rocketmq.remoting.common.RemotingHelper;
-
 public class UtilAll {
-    private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.COMMON_LOGGER_NAME);
-
     public static final String YYYY_MM_DD_HH_MM_SS = "yyyy-MM-dd HH:mm:ss";
     public static final String YYYY_MM_DD_HH_MM_SS_SSS = "yyyy-MM-dd#HH:mm:ss:SSS";
     public static final String YYYYMMDDHHMMSS = "yyyyMMddHHmmss";
     final static char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
+    private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.COMMON_LOGGER_NAME);
 
     public static int getPid() {
         RuntimeMXBean runtime = ManagementFactory.getRuntimeMXBean();
@@ -106,8 +101,8 @@ public class UtilAll {
         Calendar cal = Calendar.getInstance();
         cal.setTimeInMillis(t);
         return String.format("%04d%02d%02d%02d%02d%02d%03d", cal.get(Calendar.YEAR), cal.get(Calendar.MONTH) + 1,
-            cal.get(Calendar.DAY_OF_MONTH), cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE), cal.get(Calendar.SECOND),
-            cal.get(Calendar.MILLISECOND));
+                cal.get(Calendar.DAY_OF_MONTH), cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE), cal.get(Calendar.SECOND),
+                cal.get(Calendar.MILLISECOND));
     }
 
     public static long computNextMorningTimeMillis() {
@@ -162,25 +157,25 @@ public class UtilAll {
         Calendar cal = Calendar.getInstance();
         cal.setTimeInMillis(t);
         return String.format("%04d-%02d-%02d %02d:%02d:%02d,%03d",
-            cal.get(Calendar.YEAR),
-            cal.get(Calendar.MONTH) + 1,
-            cal.get(Calendar.DAY_OF_MONTH),
-            cal.get(Calendar.HOUR_OF_DAY),
-            cal.get(Calendar.MINUTE),
-            cal.get(Calendar.SECOND),
-            cal.get(Calendar.MILLISECOND));
+                cal.get(Calendar.YEAR),
+                cal.get(Calendar.MONTH) + 1,
+                cal.get(Calendar.DAY_OF_MONTH),
+                cal.get(Calendar.HOUR_OF_DAY),
+                cal.get(Calendar.MINUTE),
+                cal.get(Calendar.SECOND),
+                cal.get(Calendar.MILLISECOND));
     }
 
     public static String timeMillisToHumanString3(final long t) {
         Calendar cal = Calendar.getInstance();
         cal.setTimeInMillis(t);
         return String.format("%04d%02d%02d%02d%02d%02d",
-            cal.get(Calendar.YEAR),
-            cal.get(Calendar.MONTH) + 1,
-            cal.get(Calendar.DAY_OF_MONTH),
-            cal.get(Calendar.HOUR_OF_DAY),
-            cal.get(Calendar.MINUTE),
-            cal.get(Calendar.SECOND));
+                cal.get(Calendar.YEAR),
+                cal.get(Calendar.MONTH) + 1,
+                cal.get(Calendar.DAY_OF_MONTH),
+                cal.get(Calendar.HOUR_OF_DAY),
+                cal.get(Calendar.MINUTE),
+                cal.get(Calendar.SECOND));
     }
 
     public static double getDiskPartitionSpaceUsedPercent(final String path) {
@@ -401,27 +396,47 @@ public class UtilAll {
         return result.toString();
     }
 
-    public static boolean isInternalIP(byte[] ip) {
+    public static String ipToIPv4Str(byte[] ip) {
         if (ip.length != 4) {
-            throw new RuntimeException("illegal ipv4 bytes");
+            return null;
         }
+        return new StringBuilder().append(ip[0] & 0xFF).append(".").append(
+                ip[1] & 0xFF).append(".").append(ip[2] & 0xFF)
+                .append(".").append(ip[3] & 0xFF).toString();
+    }
 
-        //10.0.0.0~10.255.255.255
-        //172.16.0.0~172.31.255.255
-        //192.168.0.0~192.168.255.255
-        if (ip[0] == (byte) 10) {
-
-            return true;
-        } else if (ip[0] == (byte) 172) {
-            if (ip[1] >= (byte) 16 && ip[1] <= (byte) 31) {
-                return true;
+    public static byte[] getIP() {
+        try {
+            Enumeration allNetInterfaces = NetworkInterface.getNetworkInterfaces();
+            InetAddress ip = null;
+            byte[] internalIP = null;
+            while (allNetInterfaces.hasMoreElements()) {
+                NetworkInterface netInterface = (NetworkInterface) allNetInterfaces.nextElement();
+                Enumeration addresses = netInterface.getInetAddresses();
+                while (addresses.hasMoreElements()) {
+                    ip = (InetAddress) addresses.nextElement();
+                    if (ip != null && ip instanceof Inet4Address) {
+                        byte[] ipByte = ip.getAddress();
+                        if (ipByte.length == 4) {
+                            if (ipCheck(ipByte)) {
+                                if (!isInternalIP(ipByte)) {
+                                    return ipByte;
+                                } else if (internalIP == null) {
+                                    internalIP = ipByte;
+                                }
+                            }
+                        }
+                    }
+                }
             }
-        } else if (ip[0] == (byte) 192) {
-            if (ip[1] == (byte) 168) {
-                return true;
+            if (internalIP != null) {
+                return internalIP;
+            } else {
+                throw new RuntimeException("Can not get local ip");
             }
+        } catch (Exception e) {
+            throw new RuntimeException("Can not get local ip", e);
         }
-        return false;
     }
 
     private static boolean ipCheck(byte[] ip) {
@@ -460,47 +475,27 @@ public class UtilAll {
         return false;
     }
 
-    public static String ipToIPv4Str(byte[] ip) {
+    public static boolean isInternalIP(byte[] ip) {
         if (ip.length != 4) {
-            return null;
+            throw new RuntimeException("illegal ipv4 bytes");
         }
-        return new StringBuilder().append(ip[0] & 0xFF).append(".").append(
-            ip[1] & 0xFF).append(".").append(ip[2] & 0xFF)
-            .append(".").append(ip[3] & 0xFF).toString();
-    }
 
-    public static byte[] getIP() {
-        try {
-            Enumeration allNetInterfaces = NetworkInterface.getNetworkInterfaces();
-            InetAddress ip = null;
-            byte[] internalIP = null;
-            while (allNetInterfaces.hasMoreElements()) {
-                NetworkInterface netInterface = (NetworkInterface) allNetInterfaces.nextElement();
-                Enumeration addresses = netInterface.getInetAddresses();
-                while (addresses.hasMoreElements()) {
-                    ip = (InetAddress) addresses.nextElement();
-                    if (ip != null && ip instanceof Inet4Address) {
-                        byte[] ipByte = ip.getAddress();
-                        if (ipByte.length == 4) {
-                            if (ipCheck(ipByte)) {
-                                if (!isInternalIP(ipByte)) {
-                                    return ipByte;
-                                } else if (internalIP == null) {
-                                    internalIP = ipByte;
-                                }
-                            }
-                        }
-                    }
-                }
+        //10.0.0.0~10.255.255.255
+        //172.16.0.0~172.31.255.255
+        //192.168.0.0~192.168.255.255
+        if (ip[0] == (byte) 10) {
+
+            return true;
+        } else if (ip[0] == (byte) 172) {
+            if (ip[1] >= (byte) 16 && ip[1] <= (byte) 31) {
+                return true;
             }
-            if (internalIP != null) {
-                return internalIP;
-            } else {
-                throw new RuntimeException("Can not get local ip");
+        } else if (ip[0] == (byte) 192) {
+            if (ip[1] == (byte) 168) {
+                return true;
             }
-        } catch (Exception e) {
-            throw new RuntimeException("Can not get local ip", e);
         }
+        return false;
     }
 
     public static void deleteFile(File file) {

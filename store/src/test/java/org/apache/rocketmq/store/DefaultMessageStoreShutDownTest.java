@@ -17,7 +17,6 @@
 
 package org.apache.rocketmq.store;
 
-import java.io.File;
 import org.apache.rocketmq.common.BrokerConfig;
 import org.apache.rocketmq.common.UtilAll;
 import org.apache.rocketmq.store.config.FlushDiskType;
@@ -29,6 +28,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnitRunner;
+
+import java.io.File;
 
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.spy;
@@ -47,6 +48,16 @@ public class DefaultMessageStoreShutDownTest {
         messageStore.start();
     }
 
+    public DefaultMessageStore buildMessageStore() throws Exception {
+        MessageStoreConfig messageStoreConfig = new MessageStoreConfig();
+        messageStoreConfig.setMapedFileSizeCommitLog(1024 * 1024 * 10);
+        messageStoreConfig.setMapedFileSizeConsumeQueue(1024 * 1024 * 10);
+        messageStoreConfig.setMaxHashSlotNum(10000);
+        messageStoreConfig.setMaxIndexNum(100 * 100);
+        messageStoreConfig.setFlushDiskType(FlushDiskType.SYNC_FLUSH);
+        return new DefaultMessageStore(messageStoreConfig, new BrokerStatsManager("simpleTest"), null, new BrokerConfig());
+    }
+
     @Test
     public void testDispatchBehindWhenShutdown() {
         messageStore.shutdown();
@@ -60,16 +71,6 @@ public class DefaultMessageStoreShutDownTest {
         messageStore.destroy();
         File file = new File(messageStore.getMessageStoreConfig().getStorePathRootDir());
         UtilAll.deleteFile(file);
-    }
-
-    public DefaultMessageStore buildMessageStore() throws Exception {
-        MessageStoreConfig messageStoreConfig = new MessageStoreConfig();
-        messageStoreConfig.setMapedFileSizeCommitLog(1024 * 1024 * 10);
-        messageStoreConfig.setMapedFileSizeConsumeQueue(1024 * 1024 * 10);
-        messageStoreConfig.setMaxHashSlotNum(10000);
-        messageStoreConfig.setMaxIndexNum(100 * 100);
-        messageStoreConfig.setFlushDiskType(FlushDiskType.SYNC_FLUSH);
-        return new DefaultMessageStore(messageStoreConfig, new BrokerStatsManager("simpleTest"), null, new BrokerConfig());
     }
 
 

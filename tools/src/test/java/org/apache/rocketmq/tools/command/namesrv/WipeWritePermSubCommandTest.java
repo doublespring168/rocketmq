@@ -16,9 +16,6 @@
  */
 package org.apache.rocketmq.tools.command.namesrv;
 
-import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.PosixParser;
@@ -40,6 +37,10 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
+
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -85,9 +86,9 @@ public class WipeWritePermSubCommandTest {
     public void testExecute() throws SubCommandException {
         WipeWritePermSubCommand cmd = new WipeWritePermSubCommand();
         Options options = ServerUtil.buildCommandlineOptions(new Options());
-        String[] subargs = new String[] {"-b default-broker"};
+        String[] subargs = new String[]{"-b default-broker"};
         final CommandLine commandLine =
-            ServerUtil.parseCmdLine("mqadmin " + cmd.commandName(), subargs, cmd.buildCommandlineOptions(options), new PosixParser());
+                ServerUtil.parseCmdLine("mqadmin " + cmd.commandName(), subargs, cmd.buildCommandlineOptions(options), new PosixParser());
         cmd.execute(commandLine, options, null);
     }
 }

@@ -17,15 +17,16 @@
 package io.openmessaging.rocketmq.utils;
 
 import io.openmessaging.KeyValue;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.rocketmq.client.log.ClientLogger;
+import org.apache.rocketmq.logging.InternalLogger;
+
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.rocketmq.client.log.ClientLogger;
-import org.apache.rocketmq.logging.InternalLogger;
 
 public final class BeanUtils {
     final static InternalLogger log = ClientLogger.getLog();
@@ -34,6 +35,7 @@ public final class BeanUtils {
      * Maps primitive {@code Class}es to their corresponding wrapper {@code Class}.
      */
     private static Map<Class<?>, Class<?>> primitiveWrapperMap = new HashMap<Class<?>, Class<?>>();
+    private static Map<Class<?>, Class<?>> wrapperMap = new HashMap<Class<?>, Class<?>>();
 
     static {
         primitiveWrapperMap.put(Boolean.TYPE, Boolean.class);
@@ -46,8 +48,6 @@ public final class BeanUtils {
         primitiveWrapperMap.put(Float.TYPE, Float.class);
         primitiveWrapperMap.put(Void.TYPE, Void.TYPE);
     }
-
-    private static Map<Class<?>, Class<?>> wrapperMap = new HashMap<Class<?>, Class<?>>();
 
     static {
         for (final Class<?> primitiveClass : primitiveWrapperMap.keySet()) {
@@ -78,9 +78,9 @@ public final class BeanUtils {
      * to have more than one setter method (with different argument
      * signatures) for the same property.</p>
      *
-     * @param clazz JavaBean class whose properties are being populated
+     * @param clazz      JavaBean class whose properties are being populated
      * @param properties Map keyed by property name, with the corresponding (String or String[]) value(s) to be set
-     * @param <T> Class type
+     * @param <T>        Class type
      * @return Class instance
      */
     public static <T> T populate(final Properties properties, final Class<T> clazz) {
@@ -92,45 +92,6 @@ public final class BeanUtils {
             log.warn("Error occurs !", e);
         }
         return obj;
-    }
-
-    public static <T> T populate(final KeyValue properties, final Class<T> clazz) {
-        T obj = null;
-        try {
-            obj = clazz.newInstance();
-            return populate(properties, obj);
-        } catch (Throwable e) {
-            log.warn("Error occurs !", e);
-        }
-        return obj;
-    }
-
-    public static Class<?> getMethodClass(Class<?> clazz, String methodName) {
-        Method[] methods = clazz.getMethods();
-        for (Method method : methods) {
-            if (method.getName().equalsIgnoreCase(methodName)) {
-                return method.getParameterTypes()[0];
-            }
-        }
-        return null;
-    }
-
-    public static void setProperties(Class<?> clazz, Object obj, String methodName,
-        Object value) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
-        Class<?> parameterClass = getMethodClass(clazz, methodName);
-        Method setterMethod = clazz.getMethod(methodName, parameterClass);
-        if (parameterClass == Boolean.TYPE) {
-            setterMethod.invoke(obj, Boolean.valueOf(value.toString()));
-        } else if (parameterClass == Integer.TYPE) {
-            setterMethod.invoke(obj, Integer.valueOf(value.toString()));
-        } else if (parameterClass == Double.TYPE) {
-            setterMethod.invoke(obj, Double.valueOf(value.toString()));
-        } else if (parameterClass == Float.TYPE) {
-            setterMethod.invoke(obj, Float.valueOf(value.toString()));
-        } else if (parameterClass == Long.TYPE) {
-            setterMethod.invoke(obj, Long.valueOf(value.toString()));
-        } else
-            setterMethod.invoke(obj, value);
     }
 
     public static <T> T populate(final Properties properties, final T obj) {
@@ -153,6 +114,45 @@ public final class BeanUtils {
                 }
             }
         } catch (RuntimeException e) {
+            log.warn("Error occurs !", e);
+        }
+        return obj;
+    }
+
+    public static void setProperties(Class<?> clazz, Object obj, String methodName,
+                                     Object value) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+        Class<?> parameterClass = getMethodClass(clazz, methodName);
+        Method setterMethod = clazz.getMethod(methodName, parameterClass);
+        if (parameterClass == Boolean.TYPE) {
+            setterMethod.invoke(obj, Boolean.valueOf(value.toString()));
+        } else if (parameterClass == Integer.TYPE) {
+            setterMethod.invoke(obj, Integer.valueOf(value.toString()));
+        } else if (parameterClass == Double.TYPE) {
+            setterMethod.invoke(obj, Double.valueOf(value.toString()));
+        } else if (parameterClass == Float.TYPE) {
+            setterMethod.invoke(obj, Float.valueOf(value.toString()));
+        } else if (parameterClass == Long.TYPE) {
+            setterMethod.invoke(obj, Long.valueOf(value.toString()));
+        } else
+            setterMethod.invoke(obj, value);
+    }
+
+    public static Class<?> getMethodClass(Class<?> clazz, String methodName) {
+        Method[] methods = clazz.getMethods();
+        for (Method method : methods) {
+            if (method.getName().equalsIgnoreCase(methodName)) {
+                return method.getParameterTypes()[0];
+            }
+        }
+        return null;
+    }
+
+    public static <T> T populate(final KeyValue properties, final Class<T> clazz) {
+        T obj = null;
+        try {
+            obj = clazz.newInstance();
+            return populate(properties, obj);
+        } catch (Throwable e) {
             log.warn("Error occurs !", e);
         }
         return obj;

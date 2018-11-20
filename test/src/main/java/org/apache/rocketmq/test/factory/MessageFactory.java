@@ -17,13 +17,22 @@
 
 package org.apache.rocketmq.test.factory;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
 import org.apache.rocketmq.common.message.Message;
 import org.apache.rocketmq.test.util.RandomUtils;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
 public class MessageFactory {
+
+    public static Collection<Message> getRandomMessageList(String topic, int size) {
+        List<Message> msgList = new ArrayList<Message>();
+        for (int i = 0; i < size; i++) {
+            msgList.add(getRandomMessage(topic));
+        }
+        return msgList;
+    }
 
     public static Message getRandomMessage(String topic) {
         return getStringMessage(topic, RandomUtils.getStringByUUID());
@@ -34,29 +43,21 @@ public class MessageFactory {
         return msg;
     }
 
-    public static Message getStringMessageByTag(String topic, String tags, String body) {
-        Message msg = new Message(topic, tags, body.getBytes());
-        return msg;
-    }
-
-    public static Message getRandomMessageByTag(String topic, String tags) {
-        return getStringMessageByTag(topic, tags, RandomUtils.getStringByUUID());
-    }
-
-    public static Collection<Message> getRandomMessageList(String topic, int size) {
-        List<Message> msgList = new ArrayList<Message>();
-        for (int i = 0; i < size; i++) {
-            msgList.add(getRandomMessage(topic));
-        }
-        return msgList;
-    }
-
     public static Collection<Message> getRandomMessageListByTag(String topic, String tags, int size) {
         List<Message> msgList = new ArrayList<Message>();
         for (int i = 0; i < size; i++) {
             msgList.add(getRandomMessageByTag(topic, tags));
         }
         return msgList;
+    }
+
+    public static Message getRandomMessageByTag(String topic, String tags) {
+        return getStringMessageByTag(topic, tags, RandomUtils.getStringByUUID());
+    }
+
+    public static Message getStringMessageByTag(String topic, String tags, String body) {
+        Message msg = new Message(topic, tags, body.getBytes());
+        return msg;
     }
 
 }

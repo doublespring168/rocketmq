@@ -37,32 +37,6 @@ public class ConsumeMessageCommand implements SubCommand {
     private long messageCount = 128;
     private DefaultMQPullConsumer defaultMQPullConsumer;
 
-
-    public enum ConsumeType {
-        /**
-         * Topic only
-         */
-        DEFAULT,
-        /**
-         * Topic brokerName queueId set
-         */
-        BYQUEUE,
-        /**
-         * Topic brokerName queueId offset set
-         */
-        BYOFFSET
-    }
-
-    private static long timestampFormat(final String value) {
-        long timestamp;
-        try {
-            timestamp = Long.parseLong(value);
-        } catch (NumberFormatException e) {
-            timestamp = UtilAll.parseDate(value, UtilAll.YYYY_MM_DD_HH_MM_SS_SSS).getTime();
-        }
-
-        return timestamp;
-    }
     @Override
     public String commandName() {
         return "consumeMessage";
@@ -212,38 +186,15 @@ public class ConsumeMessageCommand implements SubCommand {
         }
     }
 
-    private void pullMessageByQueue(MessageQueue mq, long minOffset, long maxOffset) {
-        READQ:
-        for (long offset = minOffset; offset <= maxOffset; ) {
-            PullResult pullResult = null;
-            try {
-                pullResult = defaultMQPullConsumer.pull(mq, "*", offset, (int)(maxOffset - offset + 1));
-            } catch (Exception e) {
-                e.printStackTrace();
-                return;
-            }
-            if (pullResult != null) {
-                offset = pullResult.getNextBeginOffset();
-                switch (pullResult.getPullStatus()) {
-                    case FOUND:
-                        System.out.print("Consume ok\n");
-                        PrintMessageByQueueCommand.printMessage(pullResult.getMsgFoundList(), "UTF-8",
-                            true, true);
-                        break;
-                    case NO_MATCHED_MSG:
-                        System.out.printf("%s no matched msg. status=%s, offset=%s\n", mq, pullResult.getPullStatus(),
-                            offset);
-                        break;
-                    case NO_NEW_MSG:
-                    case OFFSET_ILLEGAL:
-                        System.out.printf("%s print msg finished. status=%s, offset=%s\n", mq,
-                            pullResult.getPullStatus(), offset);
-                        break READQ;
-                    default:
-                        break;
-                }
-            }
+    private static long timestampFormat(final String value) {
+        long timestamp;
+        try {
+            timestamp = Long.parseLong(value);
+        } catch (NumberFormatException e) {
+            timestamp = UtilAll.parseDate(value, UtilAll.YYYY_MM_DD_HH_MM_SS_SSS).getTime();
         }
+
+        return timestamp;
     }
 
     private void executeDefault(long timeValueBegin, long timeValueEnd) {
@@ -302,5 +253,54 @@ public class ConsumeMessageCommand implements SubCommand {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private void pullMessageByQueue(MessageQueue mq, long minOffset, long maxOffset) {
+        READQ:
+        for (long offset = minOffset; offset <= maxOffset; ) {
+            PullResult pullResult = null;
+            try {
+                pullResult = defaultMQPullConsumer.pull(mq, "*", offset, (int) (maxOffset - offset + 1));
+            } catch (Exception e) {
+                e.printStackTrace();
+                return;
+            }
+            if (pullResult != null) {
+                offset = pullResult.getNextBeginOffset();
+                switch (pullResult.getPullStatus()) {
+                    case FOUND:
+                        System.out.print("Consume ok\n");
+                        PrintMessageByQueueCommand.printMessage(pullResult.getMsgFoundList(), "UTF-8",
+                                true, true);
+                        break;
+                    case NO_MATCHED_MSG:
+                        System.out.printf("%s no matched msg. status=%s, offset=%s\n", mq, pullResult.getPullStatus(),
+                                offset);
+                        break;
+                    case NO_NEW_MSG:
+                    case OFFSET_ILLEGAL:
+                        System.out.printf("%s print msg finished. status=%s, offset=%s\n", mq,
+                                pullResult.getPullStatus(), offset);
+                        break READQ;
+                    default:
+                        break;
+                }
+            }
+        }
+    }
+
+    public enum ConsumeType {
+        /**
+         * Topic only
+         */
+        DEFAULT,
+        /**
+         * Topic brokerName queueId set
+         */
+        BYQUEUE,
+        /**
+         * Topic brokerName queueId offset set
+         */
+        BYOFFSET
     }
 }

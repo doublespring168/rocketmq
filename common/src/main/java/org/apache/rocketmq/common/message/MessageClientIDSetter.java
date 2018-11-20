@@ -16,11 +16,12 @@
  */
 package org.apache.rocketmq.common.message;
 
+import org.apache.rocketmq.common.UtilAll;
+
 import java.nio.ByteBuffer;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.rocketmq.common.UtilAll;
 
 public class MessageClientIDSetter {
     private static final String TOPIC_KEY_SPLITTER = "#";
@@ -46,19 +47,6 @@ public class MessageClientIDSetter {
         FIX_STRING = UtilAll.bytes2string(tempBuffer.array());
         setStartTime(System.currentTimeMillis());
         COUNTER = new AtomicInteger(0);
-    }
-
-    private synchronized static void setStartTime(long millis) {
-        Calendar cal = Calendar.getInstance();
-        cal.setTimeInMillis(millis);
-        cal.set(Calendar.DAY_OF_MONTH, 1);
-        cal.set(Calendar.HOUR_OF_DAY, 0);
-        cal.set(Calendar.MINUTE, 0);
-        cal.set(Calendar.SECOND, 0);
-        cal.set(Calendar.MILLISECOND, 0);
-        startTime = cal.getTimeInMillis();
-        cal.add(Calendar.MONTH, 1);
-        nextStartTime = cal.getTimeInMillis();
     }
 
     public static Date getNearlyTimeFromID(String msgID) {
@@ -99,6 +87,12 @@ public class MessageClientIDSetter {
         return result;
     }
 
+    public static void setUniqID(final Message msg) {
+        if (msg.getProperty(MessageConst.PROPERTY_UNIQ_CLIENT_MESSAGE_ID_KEYIDX) == null) {
+            msg.putProperty(MessageConst.PROPERTY_UNIQ_CLIENT_MESSAGE_ID_KEYIDX, createUniqID());
+        }
+    }
+
     public static String createUniqID() {
         StringBuilder sb = new StringBuilder(LEN * 2);
         sb.append(FIX_STRING);
@@ -118,10 +112,17 @@ public class MessageClientIDSetter {
         return buffer.array();
     }
 
-    public static void setUniqID(final Message msg) {
-        if (msg.getProperty(MessageConst.PROPERTY_UNIQ_CLIENT_MESSAGE_ID_KEYIDX) == null) {
-            msg.putProperty(MessageConst.PROPERTY_UNIQ_CLIENT_MESSAGE_ID_KEYIDX, createUniqID());
-        }
+    private synchronized static void setStartTime(long millis) {
+        Calendar cal = Calendar.getInstance();
+        cal.setTimeInMillis(millis);
+        cal.set(Calendar.DAY_OF_MONTH, 1);
+        cal.set(Calendar.HOUR_OF_DAY, 0);
+        cal.set(Calendar.MINUTE, 0);
+        cal.set(Calendar.SECOND, 0);
+        cal.set(Calendar.MILLISECOND, 0);
+        startTime = cal.getTimeInMillis();
+        cal.add(Calendar.MONTH, 1);
+        nextStartTime = cal.getTimeInMillis();
     }
 
     public static String getUniqID(final Message msg) {

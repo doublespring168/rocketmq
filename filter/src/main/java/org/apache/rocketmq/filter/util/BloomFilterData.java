@@ -41,16 +41,23 @@ public class BloomFilterData {
         return bitPos;
     }
 
-    public int getBitNum() {
-        return bitNum;
-    }
-
     public void setBitPos(final int[] bitPos) {
         this.bitPos = bitPos;
     }
 
+    public int getBitNum() {
+        return bitNum;
+    }
+
     public void setBitNum(final int bitNum) {
         this.bitNum = bitNum;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = bitPos != null ? Arrays.hashCode(bitPos) : 0;
+        result = 31 * result + bitNum;
+        return result;
     }
 
     @Override
@@ -71,17 +78,10 @@ public class BloomFilterData {
     }
 
     @Override
-    public int hashCode() {
-        int result = bitPos != null ? Arrays.hashCode(bitPos) : 0;
-        result = 31 * result + bitNum;
-        return result;
-    }
-
-    @Override
     public String toString() {
         return "BloomFilterData{" +
-            "bitPos=" + Arrays.toString(bitPos) +
-            ", bitNum=" + bitNum +
-            '}';
+                "bitPos=" + Arrays.toString(bitPos) +
+                ", bitNum=" + bitNum +
+                '}';
     }
 }

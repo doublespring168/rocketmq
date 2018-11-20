@@ -17,8 +17,6 @@
 
 package org.apache.rocketmq.test.client.rmq;
 
-import java.util.List;
-import java.util.Map;
 import org.apache.log4j.Logger;
 import org.apache.rocketmq.client.exception.MQClientException;
 import org.apache.rocketmq.client.producer.DefaultMQProducer;
@@ -27,6 +25,9 @@ import org.apache.rocketmq.common.message.Message;
 import org.apache.rocketmq.common.message.MessageQueue;
 import org.apache.rocketmq.test.clientinterface.AbstractMQProducer;
 import org.apache.rocketmq.test.sendresult.ResultWrapper;
+
+import java.util.List;
+import java.util.Map;
 
 public class RMQNormalProducer extends AbstractMQProducer {
     private static Logger logger = Logger.getLogger(RMQNormalProducer.class);
@@ -44,13 +45,35 @@ public class RMQNormalProducer extends AbstractMQProducer {
         start();
     }
 
+    protected void create(boolean useTLS) {
+        producer = new DefaultMQProducer();
+        producer.setProducerGroup(getProducerGroupName());
+        producer.setInstanceName(getProducerInstanceName());
+        producer.setUseTLS(useTLS);
+
+        if (nsAddr != null) {
+            producer.setNamesrvAddr(nsAddr);
+        }
+    }
+
+    public void start() {
+        try {
+            producer.start();
+            super.setStartSuccess(true);
+        } catch (MQClientException e) {
+            super.setStartSuccess(false);
+            logger.error("producer start failed!");
+            e.printStackTrace();
+        }
+    }
+
     public RMQNormalProducer(String nsAddr, String topic, String producerGroupName,
-        String producerInstanceName) {
+                             String producerInstanceName) {
         this(nsAddr, topic, producerGroupName, producerInstanceName, false);
     }
 
     public RMQNormalProducer(String nsAddr, String topic, String producerGroupName,
-        String producerInstanceName, boolean useTLS) {
+                             String producerInstanceName, boolean useTLS) {
         super(topic);
         this.producerGroupName = producerGroupName;
         this.producerInstanceName = producerInstanceName;
@@ -66,29 +89,6 @@ public class RMQNormalProducer extends AbstractMQProducer {
 
     public void setProducer(DefaultMQProducer producer) {
         this.producer = producer;
-    }
-
-    protected void create(boolean useTLS) {
-        producer = new DefaultMQProducer();
-        producer.setProducerGroup(getProducerGroupName());
-        producer.setInstanceName(getProducerInstanceName());
-        producer.setUseTLS(useTLS);
-
-        if (nsAddr != null) {
-            producer.setNamesrvAddr(nsAddr);
-        }
-    }
-
-
-    public void start() {
-        try {
-            producer.start();
-            super.setStartSuccess(true);
-        } catch (MQClientException e) {
-            super.setStartSuccess(false);
-            logger.error("producer start failed!");
-            e.printStackTrace();
-        }
     }
 
     public ResultWrapper send(Object msg, Object orderKey) {
@@ -118,6 +118,10 @@ public class RMQNormalProducer extends AbstractMQProducer {
         }
 
         return sendResult;
+    }
+
+    public void shutdown() {
+        producer.shutdown();
     }
 
     public void send(Map<MessageQueue, List<Object>> msgs) {
@@ -158,10 +162,6 @@ public class RMQNormalProducer extends AbstractMQProducer {
         }
 
         return sendResult;
-    }
-
-    public void shutdown() {
-        producer.shutdown();
     }
 
     @Override

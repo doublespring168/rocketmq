@@ -17,12 +17,13 @@
 
 package org.apache.rocketmq.client.latency;
 
+import org.apache.rocketmq.client.common.ThreadLocalIndex;
+
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
-import org.apache.rocketmq.client.common.ThreadLocalIndex;
 
 public class LatencyFaultToleranceImpl implements LatencyFaultTolerance<String> {
     private final ConcurrentHashMap<String, FaultItem> faultItemTable = new ConcurrentHashMap<String, FaultItem>(16);
@@ -88,14 +89,6 @@ public class LatencyFaultToleranceImpl implements LatencyFaultTolerance<String> 
         return null;
     }
 
-    @Override
-    public String toString() {
-        return "LatencyFaultToleranceImpl{" +
-            "faultItemTable=" + faultItemTable +
-            ", whichItemWorst=" + whichItemWorst +
-            '}';
-    }
-
     class FaultItem implements Comparable<FaultItem> {
         private final String name;
         private volatile long currentLatency;
@@ -159,17 +152,15 @@ public class LatencyFaultToleranceImpl implements LatencyFaultTolerance<String> 
 
         }
 
-        @Override
-        public String toString() {
-            return "FaultItem{" +
-                "name='" + name + '\'' +
-                ", currentLatency=" + currentLatency +
-                ", startTimestamp=" + startTimestamp +
-                '}';
-        }
-
         public String getName() {
             return name;
+        }        @Override
+        public String toString() {
+            return "FaultItem{" +
+                    "name='" + name + '\'' +
+                    ", currentLatency=" + currentLatency +
+                    ", startTimestamp=" + startTimestamp +
+                    '}';
         }
 
         public long getCurrentLatency() {
@@ -188,5 +179,15 @@ public class LatencyFaultToleranceImpl implements LatencyFaultTolerance<String> 
             this.startTimestamp = startTimestamp;
         }
 
+
+
+    }    @Override
+    public String toString() {
+        return "LatencyFaultToleranceImpl{" +
+                "faultItemTable=" + faultItemTable +
+                ", whichItemWorst=" + whichItemWorst +
+                '}';
     }
+
+
 }

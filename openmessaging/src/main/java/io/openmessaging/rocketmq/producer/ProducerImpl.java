@@ -52,30 +52,13 @@ public class ProducerImpl extends AbstractOMSProducer implements Producer {
     @Override
     public SendResult send(final Message message, final KeyValue properties) {
         long timeout = properties.containsKey(Message.BuiltinKeys.TIMEOUT)
-            ? properties.getInt(Message.BuiltinKeys.TIMEOUT) : this.rocketmqProducer.getSendMsgTimeout();
+                ? properties.getInt(Message.BuiltinKeys.TIMEOUT) : this.rocketmqProducer.getSendMsgTimeout();
         return send(message, timeout);
     }
 
     @Override
     public SendResult send(Message message, LocalTransactionExecutor branchExecutor, KeyValue attributes) {
         return null;
-    }
-
-    private SendResult send(final Message message, long timeout) {
-        checkMessageType(message);
-        org.apache.rocketmq.common.message.Message rmqMessage = msgConvert((BytesMessage) message);
-        try {
-            org.apache.rocketmq.client.producer.SendResult rmqResult = this.rocketmqProducer.send(rmqMessage, timeout);
-            if (!rmqResult.getSendStatus().equals(SendStatus.SEND_OK)) {
-                log.error(String.format("Send message to RocketMQ failed, %s", message));
-                throw new OMSRuntimeException("-1", "Send message to RocketMQ broker failed.");
-            }
-            message.sysHeaders().put(Message.BuiltinKeys.MESSAGE_ID, rmqResult.getMsgId());
-            return OMSUtil.sendResultConvert(rmqResult);
-        } catch (Exception e) {
-            log.error(String.format("Send message to RocketMQ failed, %s", message), e);
-            throw checkProducerException(rmqMessage.getTopic(), message.sysHeaders().getString(Message.BuiltinKeys.MESSAGE_ID), e);
-        }
     }
 
     @Override
@@ -86,31 +69,8 @@ public class ProducerImpl extends AbstractOMSProducer implements Producer {
     @Override
     public Promise<SendResult> sendAsync(final Message message, final KeyValue properties) {
         long timeout = properties.containsKey(Message.BuiltinKeys.TIMEOUT)
-            ? properties.getInt(Message.BuiltinKeys.TIMEOUT) : this.rocketmqProducer.getSendMsgTimeout();
+                ? properties.getInt(Message.BuiltinKeys.TIMEOUT) : this.rocketmqProducer.getSendMsgTimeout();
         return sendAsync(message, timeout);
-    }
-
-    private Promise<SendResult> sendAsync(final Message message, long timeout) {
-        checkMessageType(message);
-        org.apache.rocketmq.common.message.Message rmqMessage = msgConvert((BytesMessage) message);
-        final Promise<SendResult> promise = new DefaultPromise<>();
-        try {
-            this.rocketmqProducer.send(rmqMessage, new SendCallback() {
-                @Override
-                public void onSuccess(final org.apache.rocketmq.client.producer.SendResult rmqResult) {
-                    message.sysHeaders().put(Message.BuiltinKeys.MESSAGE_ID, rmqResult.getMsgId());
-                    promise.set(OMSUtil.sendResultConvert(rmqResult));
-                }
-
-                @Override
-                public void onException(final Throwable e) {
-                    promise.setFailure(e);
-                }
-            }, timeout);
-        } catch (Exception e) {
-            promise.setFailure(e);
-        }
-        return promise;
     }
 
     @Override
@@ -141,5 +101,45 @@ public class ProducerImpl extends AbstractOMSProducer implements Producer {
     @Override
     public void removeInterceptor(ProducerInterceptor interceptor) {
 
+    }
+
+    private Promise<SendResult> sendAsync(final Message message, long timeout) {
+        checkMessageType(message);
+        org.apache.rocketmq.common.message.Message rmqMessage = msgConvert((BytesMessage) message);
+        final Promise<SendResult> promise = new DefaultPromise<>();
+        try {
+            this.rocketmqProducer.send(rmqMessage, new SendCallback() {
+                @Override
+                public void onSuccess(final org.apache.rocketmq.client.producer.SendResult rmqResult) {
+                    message.sysHeaders().put(Message.BuiltinKeys.MESSAGE_ID, rmqResult.getMsgId());
+                    promise.set(OMSUtil.sendResultConvert(rmqResult));
+                }
+
+                @Override
+                public void onException(final Throwable e) {
+                    promise.setFailure(e);
+                }
+            }, timeout);
+        } catch (Exception e) {
+            promise.setFailure(e);
+        }
+        return promise;
+    }
+
+    private SendResult send(final Message message, long timeout) {
+        checkMessageType(message);
+        org.apache.rocketmq.common.message.Message rmqMessage = msgConvert((BytesMessage) message);
+        try {
+            org.apache.rocketmq.client.producer.SendResult rmqResult = this.rocketmqProducer.send(rmqMessage, timeout);
+            if (!rmqResult.getSendStatus().equals(SendStatus.SEND_OK)) {
+                log.error(String.format("Send message to RocketMQ failed, %s", message));
+                throw new OMSRuntimeException("-1", "Send message to RocketMQ broker failed.");
+            }
+            message.sysHeaders().put(Message.BuiltinKeys.MESSAGE_ID, rmqResult.getMsgId());
+            return OMSUtil.sendResultConvert(rmqResult);
+        } catch (Exception e) {
+            log.error(String.format("Send message to RocketMQ failed, %s", message), e);
+            throw checkProducerException(rmqMessage.getTopic(), message.sysHeaders().getString(Message.BuiltinKeys.MESSAGE_ID), e);
+        }
     }
 }

@@ -16,8 +16,6 @@
  */
 package org.apache.rocketmq.tools.command.broker;
 
-import java.io.UnsupportedEncodingException;
-import java.lang.reflect.Field;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.PosixParser;
@@ -38,6 +36,9 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
+
+import java.io.UnsupportedEncodingException;
+import java.lang.reflect.Field;
 
 import static org.mockito.Mockito.mock;
 
@@ -74,9 +75,9 @@ public class UpdateBrokerConfigSubCommandTest {
     public void testExecute() throws SubCommandException {
         UpdateBrokerConfigSubCommand cmd = new UpdateBrokerConfigSubCommand();
         Options options = ServerUtil.buildCommandlineOptions(new Options());
-        String[] subargs = new String[] {"-b 127.0.0.1:10911", "-c default-cluster", "-k topicname", "-v unit_test"};
+        String[] subargs = new String[]{"-b 127.0.0.1:10911", "-c default-cluster", "-k topicname", "-v unit_test"};
         final CommandLine commandLine =
-            ServerUtil.parseCmdLine("mqadmin " + cmd.commandName(), subargs, cmd.buildCommandlineOptions(options), new PosixParser());
+                ServerUtil.parseCmdLine("mqadmin " + cmd.commandName(), subargs, cmd.buildCommandlineOptions(options), new PosixParser());
         cmd.execute(commandLine, options, null);
     }
 }

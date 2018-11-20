@@ -34,92 +34,63 @@ import org.apache.rocketmq.store.MessageExtBrokerInner;
 import org.apache.rocketmq.store.PutMessageResult;
 import org.apache.rocketmq.store.PutMessageStatus;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class TransactionalMessageServiceImpl implements TransactionalMessageService {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.TRANSACTION_LOGGER_NAME);
-
-    private TransactionalMessageBridge transactionalMessageBridge;
-
     private static final int PULL_MSG_RETRY_NUMBER = 1;
-
     private static final int MAX_PROCESS_TIME_LIMIT = 60000;
-
     private static final int MAX_RETRY_COUNT_WHEN_HALF_NULL = 1;
+    private TransactionalMessageBridge transactionalMessageBridge;
+    private ConcurrentHashMap<MessageQueue, MessageQueue> opQueueMap = new ConcurrentHashMap<>();
 
     public TransactionalMessageServiceImpl(TransactionalMessageBridge transactionBridge) {
         this.transactionalMessageBridge = transactionBridge;
     }
-
-    private ConcurrentHashMap<MessageQueue, MessageQueue> opQueueMap = new ConcurrentHashMap<>();
 
     @Override
     public PutMessageResult prepareMessage(MessageExtBrokerInner messageInner) {
         return transactionalMessageBridge.putHalfMessage(messageInner);
     }
 
-    private boolean needDiscard(MessageExt msgExt, int transactionCheckMax) {
-        String checkTimes = msgExt.getProperty(MessageConst.PROPERTY_TRANSACTION_CHECK_TIMES);
-        int checkTime = 1;
-        if (null != checkTimes) {
-            checkTime = getInt(checkTimes);
-            if (checkTime >= transactionCheckMax) {
-                return true;
-            } else {
-                checkTime++;
-            }
-        }
-        msgExt.putUserProperty(MessageConst.PROPERTY_TRANSACTION_CHECK_TIMES, String.valueOf(checkTime));
-        return false;
-    }
-
-    private boolean needSkip(MessageExt msgExt) {
-        long valueOfCurrentMinusBorn = System.currentTimeMillis() - msgExt.getBornTimestamp();
-        if (valueOfCurrentMinusBorn
-            > transactionalMessageBridge.getBrokerController().getMessageStoreConfig().getFileReservedTime()
-            * 3600L * 1000) {
-            log.info("Half message exceed file reserved time ,so skip it.messageId {},bornTime {}",
-                msgExt.getMsgId(), msgExt.getBornTimestamp());
-            return true;
-        }
-        return false;
-    }
-
-    private boolean putBackHalfMsgQueue(MessageExt msgExt, long offset) {
-        PutMessageResult putMessageResult = putBackToHalfQueueReturnResult(msgExt);
-        if (putMessageResult != null
-            && putMessageResult.getPutMessageStatus() == PutMessageStatus.PUT_OK) {
-            msgExt.setQueueOffset(
-                putMessageResult.getAppendMessageResult().getLogicsOffset());
-            msgExt.setCommitLogOffset(
-                putMessageResult.getAppendMessageResult().getWroteOffset());
-            msgExt.setMsgId(putMessageResult.getAppendMessageResult().getMsgId());
-            log.info(
-                "Send check message, the offset={} restored in queueOffset={} "
-                    + "commitLogOffset={} "
-                    + "newMsgId={} realMsgId={} topic={}",
-                offset, msgExt.getQueueOffset(), msgExt.getCommitLogOffset(), msgExt.getMsgId(),
-                msgExt.getUserProperty(MessageConst.PROPERTY_UNIQ_CLIENT_MESSAGE_ID_KEYIDX),
-                msgExt.getTopic());
+    @Override
+    public boolean deletePrepareMessage(MessageExt msgExt) {
+        if (this.transactionalMessageBridge.putOpMessage(msgExt, TransactionalMessageUtil.REMOVETAG)) {
+            log.info("Transaction op message write successfully. messageId={}, queueId={} msgExt:{}", msgExt.getMsgId(), msgExt.getQueueId(), msgExt);
             return true;
         } else {
-            log.error(
-                "PutBackToHalfQueueReturnResult write failed, topic: {}, queueId: {}, "
-                    + "msgId: {}",
-                msgExt.getTopic(), msgExt.getQueueId(), msgExt.getMsgId());
+            log.error("Transaction op message write failed. messageId is {}, queueId is {}", msgExt.getMsgId(), msgExt.getQueueId());
             return false;
         }
     }
 
     @Override
+    public OperationResult commitMessage(EndTransactionRequestHeader requestHeader) {
+        return getHalfMessageByOffset(requestHeader.getCommitLogOffset());
+    }
+
+    private OperationResult getHalfMessageByOffset(long commitLogOffset) {
+        OperationResult response = new OperationResult();
+        MessageExt messageExt = this.transactionalMessageBridge.lookMessageByOffset(commitLogOffset);
+        if (messageExt != null) {
+            response.setPrepareMessage(messageExt);
+            response.setResponseCode(ResponseCode.SUCCESS);
+        } else {
+            response.setResponseCode(ResponseCode.SYSTEM_ERROR);
+            response.setResponseRemark("Find prepared transaction message failed");
+        }
+        return response;
+    }
+
+    @Override
+    public OperationResult rollbackMessage(EndTransactionRequestHeader requestHeader) {
+        return getHalfMessageByOffset(requestHeader.getCommitLogOffset());
+    }
+
+    @Override
     public void check(long transactionTimeout, int transactionCheckMax,
-        AbstractTransactionalMessageCheckListener listener) {
+                      AbstractTransactionalMessageCheckListener listener) {
         try {
             String topic = MixAll.RMQ_SYS_TRANS_HALF_TOPIC;
             Set<MessageQueue> msgQueues = transactionalMessageBridge.fetchMessageQueues(topic);
@@ -136,7 +107,7 @@ public class TransactionalMessageServiceImpl implements TransactionalMessageServ
                 log.info("Before check, the queue={} msgOffset={} opOffset={}", messageQueue, halfOffset, opOffset);
                 if (halfOffset < 0 || opOffset < 0) {
                     log.error("MessageQueue: {} illegal offset read: {}, op offset: {},skip this queue", messageQueue,
-                        halfOffset, opOffset);
+                            halfOffset, opOffset);
                     continue;
                 }
 
@@ -145,7 +116,7 @@ public class TransactionalMessageServiceImpl implements TransactionalMessageServ
                 PullResult pullResult = fillOpRemoveMap(removeMap, opQueue, opOffset, halfOffset, doneOpOffset);
                 if (null == pullResult) {
                     log.error("The queue={} check msgOffset={} with opOffset={} failed, pullResult is null",
-                        messageQueue, halfOffset, opOffset);
+                            messageQueue, halfOffset, opOffset);
                     continue;
                 }
                 // single thread
@@ -169,11 +140,11 @@ public class TransactionalMessageServiceImpl implements TransactionalMessageServ
                             }
                             if (getResult.getPullResult().getPullStatus() == PullStatus.NO_NEW_MSG) {
                                 log.info("No new msg, the miss offset={} in={}, continue check={}, pull result={}", i,
-                                    messageQueue, getMessageNullCount, getResult.getPullResult());
+                                        messageQueue, getMessageNullCount, getResult.getPullResult());
                                 break;
                             } else {
                                 log.info("Illegal offset, the miss offset={} in={}, continue check={}, pull result={}",
-                                    i, messageQueue, getMessageNullCount, getResult.getPullResult());
+                                        i, messageQueue, getMessageNullCount, getResult.getPullResult());
                                 i = getResult.getPullResult().getNextBeginOffset();
                                 newOffset = i;
                                 continue;
@@ -188,7 +159,7 @@ public class TransactionalMessageServiceImpl implements TransactionalMessageServ
                         }
                         if (msgExt.getStoreTimestamp() >= startTime) {
                             log.info("Fresh stored. the miss offset={}, check it later, store={}", i,
-                                new Date(msgExt.getStoreTimestamp()));
+                                    new Date(msgExt.getStoreTimestamp()));
                             break;
                         }
 
@@ -207,14 +178,14 @@ public class TransactionalMessageServiceImpl implements TransactionalMessageServ
                         } else {
                             if ((0 <= valueOfCurrentMinusBorn) && (valueOfCurrentMinusBorn < checkImmunityTime)) {
                                 log.info("New arrived, the miss offset={}, check it later checkImmunity={}, born={}", i,
-                                    checkImmunityTime, new Date(msgExt.getBornTimestamp()));
+                                        checkImmunityTime, new Date(msgExt.getBornTimestamp()));
                                 break;
                             }
                         }
                         List<MessageExt> opMsg = pullResult.getMsgFoundList();
                         boolean isNeedCheck = (opMsg == null && valueOfCurrentMinusBorn > checkImmunityTime)
-                            || (opMsg != null && (opMsg.get(opMsg.size() - 1).getBornTimestamp() - startTime > transactionTimeout))
-                            || (valueOfCurrentMinusBorn <= -1);
+                                || (opMsg != null && (opMsg.get(opMsg.size() - 1).getBornTimestamp() - startTime > transactionTimeout))
+                                || (valueOfCurrentMinusBorn <= -1);
 
                         if (isNeedCheck) {
                             if (!putBackHalfMsgQueue(msgExt, i)) {
@@ -224,7 +195,7 @@ public class TransactionalMessageServiceImpl implements TransactionalMessageServ
                         } else {
                             pullResult = fillOpRemoveMap(removeMap, opQueue, pullResult.getNextBeginOffset(), halfOffset, doneOpOffset);
                             log.info("The miss offset:{} in messageQueue:{} need to get more opMsg, result is:{}", i,
-                                messageQueue, pullResult);
+                                    messageQueue, pullResult);
                             continue;
                         }
                     }
@@ -246,43 +217,42 @@ public class TransactionalMessageServiceImpl implements TransactionalMessageServ
 
     }
 
-    private long getImmunityTime(String checkImmunityTimeStr, long transactionTimeout) {
-        long checkImmunityTime;
-
-        checkImmunityTime = getLong(checkImmunityTimeStr);
-        if (-1 == checkImmunityTime) {
-            checkImmunityTime = transactionTimeout;
-        } else {
-            checkImmunityTime *= 1000;
+    private MessageQueue getOpQueue(MessageQueue messageQueue) {
+        MessageQueue opQueue = opQueueMap.get(messageQueue);
+        if (opQueue == null) {
+            opQueue = new MessageQueue(TransactionalMessageUtil.buildOpTopic(), messageQueue.getBrokerName(),
+                    messageQueue.getQueueId());
+            opQueueMap.put(messageQueue, opQueue);
         }
-        return checkImmunityTime;
+        return opQueue;
+
     }
 
     /**
      * Read op message, parse op message, and fill removeMap
      *
-     * @param removeMap Half message to be remove, key:halfOffset, value: opOffset.
-     * @param opQueue Op message queue.
+     * @param removeMap      Half message to be remove, key:halfOffset, value: opOffset.
+     * @param opQueue        Op message queue.
      * @param pullOffsetOfOp The begin offset of op message queue.
-     * @param miniOffset The current minimum offset of half message queue.
-     * @param doneOpOffset Stored op messages that have been processed.
+     * @param miniOffset     The current minimum offset of half message queue.
+     * @param doneOpOffset   Stored op messages that have been processed.
      * @return Op message result.
      */
     private PullResult fillOpRemoveMap(HashMap<Long, Long> removeMap,
-        MessageQueue opQueue, long pullOffsetOfOp, long miniOffset, List<Long> doneOpOffset) {
+                                       MessageQueue opQueue, long pullOffsetOfOp, long miniOffset, List<Long> doneOpOffset) {
         PullResult pullResult = pullOpMsg(opQueue, pullOffsetOfOp, 32);
         if (null == pullResult) {
             return null;
         }
         if (pullResult.getPullStatus() == PullStatus.OFFSET_ILLEGAL
-            || pullResult.getPullStatus() == PullStatus.NO_MATCHED_MSG) {
+                || pullResult.getPullStatus() == PullStatus.NO_MATCHED_MSG) {
             log.warn("The miss op offset={} in queue={} is illegal, pullResult={}", pullOffsetOfOp, opQueue,
-                pullResult);
+                    pullResult);
             transactionalMessageBridge.updateConsumeOffset(opQueue, pullResult.getNextBeginOffset());
             return pullResult;
         } else if (pullResult.getPullStatus() == PullStatus.NO_NEW_MSG) {
             log.warn("The miss op offset={} in queue={} is NO_NEW_MSG, pullResult={}", pullOffsetOfOp, opQueue,
-                pullResult);
+                    pullResult);
             return pullResult;
         }
         List<MessageExt> opMsg = pullResult.getMsgFoundList();
@@ -293,7 +263,7 @@ public class TransactionalMessageServiceImpl implements TransactionalMessageServ
         for (MessageExt opMessageExt : opMsg) {
             Long queueOffset = getLong(new String(opMessageExt.getBody(), TransactionalMessageUtil.charset));
             log.info("Topic: {} tags: {}, OpOffset: {}, HalfOffset: {}", opMessageExt.getTopic(),
-                opMessageExt.getTags(), opMessageExt.getQueueOffset(), queueOffset);
+                    opMessageExt.getTags(), opMessageExt.getQueueOffset(), queueOffset);
             if (TransactionalMessageUtil.REMOVETAG.equals(opMessageExt.getTags())) {
                 if (queueOffset < miniOffset) {
                     doneOpOffset.add(opMessageExt.getQueueOffset());
@@ -309,17 +279,69 @@ public class TransactionalMessageServiceImpl implements TransactionalMessageServ
         return pullResult;
     }
 
+    private GetResult getHalfMsg(MessageQueue messageQueue, long offset) {
+        GetResult getResult = new GetResult();
+
+        PullResult result = pullHalfMsg(messageQueue, offset, PULL_MSG_RETRY_NUMBER);
+        getResult.setPullResult(result);
+        List<MessageExt> messageExts = result.getMsgFoundList();
+        if (messageExts == null) {
+            return getResult;
+        }
+        getResult.setMsg(messageExts.get(0));
+        return getResult;
+    }
+
+    private boolean needDiscard(MessageExt msgExt, int transactionCheckMax) {
+        String checkTimes = msgExt.getProperty(MessageConst.PROPERTY_TRANSACTION_CHECK_TIMES);
+        int checkTime = 1;
+        if (null != checkTimes) {
+            checkTime = getInt(checkTimes);
+            if (checkTime >= transactionCheckMax) {
+                return true;
+            } else {
+                checkTime++;
+            }
+        }
+        msgExt.putUserProperty(MessageConst.PROPERTY_TRANSACTION_CHECK_TIMES, String.valueOf(checkTime));
+        return false;
+    }
+
+    private boolean needSkip(MessageExt msgExt) {
+        long valueOfCurrentMinusBorn = System.currentTimeMillis() - msgExt.getBornTimestamp();
+        if (valueOfCurrentMinusBorn
+                > transactionalMessageBridge.getBrokerController().getMessageStoreConfig().getFileReservedTime()
+                * 3600L * 1000) {
+            log.info("Half message exceed file reserved time ,so skip it.messageId {},bornTime {}",
+                    msgExt.getMsgId(), msgExt.getBornTimestamp());
+            return true;
+        }
+        return false;
+    }
+
+    private long getImmunityTime(String checkImmunityTimeStr, long transactionTimeout) {
+        long checkImmunityTime;
+
+        checkImmunityTime = getLong(checkImmunityTimeStr);
+        if (-1 == checkImmunityTime) {
+            checkImmunityTime = transactionTimeout;
+        } else {
+            checkImmunityTime *= 1000;
+        }
+        return checkImmunityTime;
+    }
+
     /**
      * If return true, skip this msg
      *
-     * @param removeMap Op message map to determine whether a half message was responded by producer.
-     * @param doneOpOffset Op Message which has been checked.
-     * @param msgExt Half message
+     * @param removeMap         Op message map to determine whether a half message was responded by producer.
+     * @param doneOpOffset      Op Message which has been checked.
+     * @param msgExt            Half message
      * @param checkImmunityTime User defined time to avoid being detected early.
      * @return Return true if put success, otherwise return false.
      */
     private boolean checkPrepareQueueOffset(HashMap<Long, Long> removeMap, List<Long> doneOpOffset, MessageExt msgExt,
-        long checkImmunityTime) {
+                                            long checkImmunityTime) {
         if (System.currentTimeMillis() - msgExt.getBornTimestamp() < checkImmunityTime) {
             String prepareQueueOffsetStr = msgExt.getUserProperty(MessageConst.PROPERTY_TRANSACTION_PREPARED_QUEUE_OFFSET);
             if (null == prepareQueueOffsetStr) {
@@ -345,46 +367,52 @@ public class TransactionalMessageServiceImpl implements TransactionalMessageServ
         }
     }
 
-    /**
-     * Write messageExt to Half topic again
-     *
-     * @param messageExt Message will be write back to queue
-     * @return Put result can used to determine the specific results of storage.
-     */
-    private PutMessageResult putBackToHalfQueueReturnResult(MessageExt messageExt) {
-        PutMessageResult putMessageResult = null;
-        try {
-            MessageExtBrokerInner msgInner = transactionalMessageBridge.renewHalfMessageInner(messageExt);
-            putMessageResult = transactionalMessageBridge.putMessageReturnResult(msgInner);
-        } catch (Exception e) {
-            log.warn("PutBackToHalfQueueReturnResult error", e);
+    private boolean putBackHalfMsgQueue(MessageExt msgExt, long offset) {
+        PutMessageResult putMessageResult = putBackToHalfQueueReturnResult(msgExt);
+        if (putMessageResult != null
+                && putMessageResult.getPutMessageStatus() == PutMessageStatus.PUT_OK) {
+            msgExt.setQueueOffset(
+                    putMessageResult.getAppendMessageResult().getLogicsOffset());
+            msgExt.setCommitLogOffset(
+                    putMessageResult.getAppendMessageResult().getWroteOffset());
+            msgExt.setMsgId(putMessageResult.getAppendMessageResult().getMsgId());
+            log.info(
+                    "Send check message, the offset={} restored in queueOffset={} "
+                            + "commitLogOffset={} "
+                            + "newMsgId={} realMsgId={} topic={}",
+                    offset, msgExt.getQueueOffset(), msgExt.getCommitLogOffset(), msgExt.getMsgId(),
+                    msgExt.getUserProperty(MessageConst.PROPERTY_UNIQ_CLIENT_MESSAGE_ID_KEYIDX),
+                    msgExt.getTopic());
+            return true;
+        } else {
+            log.error(
+                    "PutBackToHalfQueueReturnResult write failed, topic: {}, queueId: {}, "
+                            + "msgId: {}",
+                    msgExt.getTopic(), msgExt.getQueueId(), msgExt.getMsgId());
+            return false;
         }
-        return putMessageResult;
     }
 
-    private boolean putImmunityMsgBackToHalfQueue(MessageExt messageExt) {
-        MessageExtBrokerInner msgInner = transactionalMessageBridge.renewImmunityHalfMessageInner(messageExt);
-        return transactionalMessageBridge.putMessage(msgInner);
-    }
+    private long calculateOpOffset(List<Long> doneOffset, long oldOffset) {
+        Collections.sort(doneOffset);
+        long newOffset = oldOffset;
+        for (int i = 0; i < doneOffset.size(); i++) {
+            if (doneOffset.get(i) == newOffset) {
+                newOffset++;
+            } else {
+                break;
+            }
+        }
+        return newOffset;
 
-    /**
-     * Read half message from Half Topic
-     *
-     * @param mq Target message queue, in this method, it means the half message queue.
-     * @param offset Offset in the message queue.
-     * @param nums Pull message number.
-     * @return Messages pulled from half message queue.
-     */
-    private PullResult pullHalfMsg(MessageQueue mq, long offset, int nums) {
-        return transactionalMessageBridge.getHalfMessage(mq.getQueueId(), offset, nums);
     }
 
     /**
      * Read op message from Op Topic
      *
-     * @param mq Target Message Queue
+     * @param mq     Target Message Queue
      * @param offset Offset in the message queue
-     * @param nums Pull message number
+     * @param nums   Pull message number
      * @return Messages pulled from operate message queue.
      */
     private PullResult pullOpMsg(MessageQueue mq, long offset, int nums) {
@@ -402,6 +430,18 @@ public class TransactionalMessageServiceImpl implements TransactionalMessageServ
 
     }
 
+    /**
+     * Read half message from Half Topic
+     *
+     * @param mq     Target message queue, in this method, it means the half message queue.
+     * @param offset Offset in the message queue.
+     * @param nums   Pull message number.
+     * @return Messages pulled from half message queue.
+     */
+    private PullResult pullHalfMsg(MessageQueue mq, long offset, int nums) {
+        return transactionalMessageBridge.getHalfMessage(mq.getQueueId(), offset, nums);
+    }
+
     private Integer getInt(String s) {
         int v = -1;
         try {
@@ -413,76 +453,26 @@ public class TransactionalMessageServiceImpl implements TransactionalMessageServ
 
     }
 
-    private long calculateOpOffset(List<Long> doneOffset, long oldOffset) {
-        Collections.sort(doneOffset);
-        long newOffset = oldOffset;
-        for (int i = 0; i < doneOffset.size(); i++) {
-            if (doneOffset.get(i) == newOffset) {
-                newOffset++;
-            } else {
-                break;
-            }
+    private boolean putImmunityMsgBackToHalfQueue(MessageExt messageExt) {
+        MessageExtBrokerInner msgInner = transactionalMessageBridge.renewImmunityHalfMessageInner(messageExt);
+        return transactionalMessageBridge.putMessage(msgInner);
+    }
+
+    /**
+     * Write messageExt to Half topic again
+     *
+     * @param messageExt Message will be write back to queue
+     * @return Put result can used to determine the specific results of storage.
+     */
+    private PutMessageResult putBackToHalfQueueReturnResult(MessageExt messageExt) {
+        PutMessageResult putMessageResult = null;
+        try {
+            MessageExtBrokerInner msgInner = transactionalMessageBridge.renewHalfMessageInner(messageExt);
+            putMessageResult = transactionalMessageBridge.putMessageReturnResult(msgInner);
+        } catch (Exception e) {
+            log.warn("PutBackToHalfQueueReturnResult error", e);
         }
-        return newOffset;
-
-    }
-
-    private MessageQueue getOpQueue(MessageQueue messageQueue) {
-        MessageQueue opQueue = opQueueMap.get(messageQueue);
-        if (opQueue == null) {
-            opQueue = new MessageQueue(TransactionalMessageUtil.buildOpTopic(), messageQueue.getBrokerName(),
-                messageQueue.getQueueId());
-            opQueueMap.put(messageQueue, opQueue);
-        }
-        return opQueue;
-
-    }
-
-    private GetResult getHalfMsg(MessageQueue messageQueue, long offset) {
-        GetResult getResult = new GetResult();
-
-        PullResult result = pullHalfMsg(messageQueue, offset, PULL_MSG_RETRY_NUMBER);
-        getResult.setPullResult(result);
-        List<MessageExt> messageExts = result.getMsgFoundList();
-        if (messageExts == null) {
-            return getResult;
-        }
-        getResult.setMsg(messageExts.get(0));
-        return getResult;
-    }
-
-    private OperationResult getHalfMessageByOffset(long commitLogOffset) {
-        OperationResult response = new OperationResult();
-        MessageExt messageExt = this.transactionalMessageBridge.lookMessageByOffset(commitLogOffset);
-        if (messageExt != null) {
-            response.setPrepareMessage(messageExt);
-            response.setResponseCode(ResponseCode.SUCCESS);
-        } else {
-            response.setResponseCode(ResponseCode.SYSTEM_ERROR);
-            response.setResponseRemark("Find prepared transaction message failed");
-        }
-        return response;
-    }
-
-    @Override
-    public boolean deletePrepareMessage(MessageExt msgExt) {
-        if (this.transactionalMessageBridge.putOpMessage(msgExt, TransactionalMessageUtil.REMOVETAG)) {
-            log.info("Transaction op message write successfully. messageId={}, queueId={} msgExt:{}", msgExt.getMsgId(), msgExt.getQueueId(), msgExt);
-            return true;
-        } else {
-            log.error("Transaction op message write failed. messageId is {}, queueId is {}", msgExt.getMsgId(), msgExt.getQueueId());
-            return false;
-        }
-    }
-
-    @Override
-    public OperationResult commitMessage(EndTransactionRequestHeader requestHeader) {
-        return getHalfMessageByOffset(requestHeader.getCommitLogOffset());
-    }
-
-    @Override
-    public OperationResult rollbackMessage(EndTransactionRequestHeader requestHeader) {
-        return getHalfMessageByOffset(requestHeader.getCommitLogOffset());
+        return putMessageResult;
     }
 
     @Override

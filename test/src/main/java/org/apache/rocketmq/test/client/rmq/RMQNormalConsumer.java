@@ -29,7 +29,7 @@ public class RMQNormalConsumer extends AbstractMQConsumer {
     protected DefaultMQPushConsumer consumer = null;
 
     public RMQNormalConsumer(String nsAddr, String topic, String subExpression,
-        String consumerGroup, AbstractListener listener) {
+                             String consumerGroup, AbstractListener listener) {
         super(nsAddr, topic, subExpression, consumerGroup, listener);
     }
 
@@ -39,6 +39,26 @@ public class RMQNormalConsumer extends AbstractMQConsumer {
 
     public void setListener(AbstractListener listener) {
         this.listener = listener;
+    }
+
+    @Override
+    public void clearMsg() {
+        this.listener.clearMsg();
+    }
+
+    public void subscribe(String topic, String subExpression) {
+        try {
+            consumer.subscribe(topic, subExpression);
+        } catch (MQClientException e) {
+            logger.error("consumer subscribe failed!");
+            e.printStackTrace();
+        }
+    }
+
+    public void restart() {
+        consumer.shutdown();
+        create();
+        start();
     }
 
     public void create() {
@@ -69,27 +89,7 @@ public class RMQNormalConsumer extends AbstractMQConsumer {
         }
     }
 
-    public void subscribe(String topic, String subExpression) {
-        try {
-            consumer.subscribe(topic, subExpression);
-        } catch (MQClientException e) {
-            logger.error("consumer subscribe failed!");
-            e.printStackTrace();
-        }
-    }
-
     public void shutdown() {
         consumer.shutdown();
-    }
-
-    @Override
-    public void clearMsg() {
-        this.listener.clearMsg();
-    }
-
-    public void restart() {
-        consumer.shutdown();
-        create();
-        start();
     }
 }
